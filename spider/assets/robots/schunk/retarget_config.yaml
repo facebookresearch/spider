@@ -1,0 +1,43 @@
+low_pass_alpha: 1.0
+scaling_factor: 1.3
+left:
+  urdf_path: schunk_hand_left_6dof.urdf 
+  target_origin_link: "left_hand_base_link"
+  human_origin_idx: 0
+  target_finger_links: ["thtip", "fftip", "mftip", "rftip", "lftip", "left_hand_b", "left_hand_p", "left_hand_o", "left_hand_n", "left_hand_i"]
+  human_finger_idxs:  [16, 17, 18, 19, 20, 14, 2, 5, 11, 8 ]
+  wrist_body: "left_hand_base_link"
+  target_joint_names: [
+    'left_hand_Thumb_Flexion', 
+    'left_hand_Thumb_Opposition', 
+    'left_hand_Index_Finger_Distal', 
+    'left_hand_Index_Finger_Proximal',
+    'left_hand_Middle_Finger_Proximal',
+    'left_hand_Middle_Finger_Distal',
+    'left_hand_Ring_Finger',
+    'left_hand_Pinky',
+    'left_hand_Finger_Spread',
+    'L_forearm_tx_link_joint', 'L_forearm_ty_link_joint', 'L_forearm_tz_link_joint', 'L_forearm_roll_link_joint', 'L_forearm_pitch_link_joint', 'L_forearm_yaw_link_joint']
+
+   
+
+right:
+  urdf_path: schunk_hand_right_6dof.urdf 
+  target_origin_link: "right_hand_base_link"
+  human_origin_idx: 0
+  target_finger_links: ["thtip", "fftip", "mftip", "rftip", "lftip", "right_hand_b", "right_hand_p", "right_hand_o", "right_hand_n", "right_hand_i"]
+  human_finger_idxs:  [16, 17, 18, 19, 20, 14, 2, 5, 11, 8 ] 
+  wrist_body: "right_hand_base_link"
+  target_joint_names: [
+    'right_hand_Thumb_Flexion',
+    'right_hand_Thumb_Opposition',
+    'right_hand_Index_Finger_Distal',
+    'right_hand_Index_Finger_Proximal',
+    'right_hand_Middle_Finger_Proximal',
+    'right_hand_Middle_Finger_Distal',
+    'right_hand_Ring_Finger',
+    'right_hand_Pinky',
+    'right_hand_Finger_Spread', 'R_forearm_tx_link_joint', 'R_forearm_ty_link_joint', 
+    'R_forearm_tz_link_joint', 'R_forearm_roll_link_joint', 'R_forearm_pitch_link_joint', 'R_forearm_yaw_link_joint']
+
+  

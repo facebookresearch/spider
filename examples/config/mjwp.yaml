@@ -1,0 +1,43 @@
+dataset_dir: ../../example_datasets
+dataset_name: oakink
+robot_type: allegro
+hand_type: bimanual
+task: pick_spoon_bowl
+data_id: 0
+sim_dt: 0.01
+ctrl_dt: 0.2
+ref_dt: 0.02
+show_viewer: true
+save_video: true
+save_info: true
+# Configuration for MJWP (MuJoCo + Warp) dynamics retargeting pipeline
+defaults:
+  - _self_
+  - launcher: basic
+
+# Configuration for MJWP (MuJoCo + Warp) dynamics retargeting pipeline
+dataset_dir: "../example_datasets"
+dataset_name: "oakink"
+robot_type: "allegro"
+hand_type: "bimanual"
+all_tasks: null  # if null, process all available tasks, otherwise specify list of tasks
+overwrite: false  # whether to overwrite existing mjwp trajectories
+viewer: ""
+device: "cuda:0"
+method: "mjwp"
+
+# MJWP-specific optimization parameters (optional overrides)
+# Set to null to use defaults from Config class
+horizon: null  # default: 1.2
+sim_dt: null   # default: 0.01  
+ctrl_dt: null  # default: 0.2
+show_viewer: false  # typically false for batch processing
+save_video: true
+save_info: true
+max_sim_steps: -1  # -1 means use full trajectory length
+
+# Hydra configuration
+hydra:
+  run:
+    dir: .
+  output_subdir: null

@@ -1,0 +1,348 @@
+<mujoco model="metahand_right">
+    <compiler angle="radian" meshdir="assets" autolimits="true" />
+
+    <option timestep="0.01"
+        iterations="10" ls_iterations="50">
+        <flag eulerdamp="disable" />
+    </option>
+
+    <default>
+        <default class="mimic_right">
+            <site size="0.015" type="sphere" rgba="1 0 0 1" group="3" />
+        </default>
+        <default class="metahand_right">
+            <joint axis="0 1 0" armature="1.0" damping="0.0" />
+            <!-- <joint axis="0 1 0" damping="0.2" armature="0.00149376"
+                actuatorfrcrange="-0.2196 0.2196" frictionloss="0.02" /> -->
+            <position kp="300" dampratio="1.0" />
+            <geom density="800" />
+
+            <default class="right_visual">
+                <geom type="mesh" contype="0" conaffinity="0" group="2" material="right_black" />
+                <default class="right_palm_visual">
+                    <geom mesh="right_base_link" />
+                </default>
+                <default class="right_base_visual">
+                    <geom mesh="right_link_0.0" />
+                </default>
+                <default class="right_proximal_visual">
+                    <geom mesh="right_link_1.0" />
+                </default>
+                <default class="right_medial_visual">
+                    <geom mesh="right_link_2.0" />
+                </default>
+                <default class="right_distal_visual">
+                    <geom mesh="right_link_3.0" />
+                </default>
+                <default class="right_fingertip_visual">
+                    <geom pos="0 0 0.0515" material="right_white" mesh="right_link_3.0_tip" />
+                </default>
+                <default class="right_thumbtip_visual">
+                    <geom pos="0 0 0.0671" material="right_white" mesh="right_link_15.0_tip" />
+                </default>
+            </default>
+
+            <default class="right_collision">
+                <!-- disable all collisions, use explicit collision pairs -->
+                <geom group="3" type="box" mass="0" condim="1" contype="0" conaffinity="0" />
+                <default class="right_palm_collision">
+                    <geom size="0.0204 0.0565 0.0475" pos="-0.0093 0 -0.0475" />
+                </default>
+                <default class="right_base_collision">
+                    <geom size="0.0098 0.01375 0.0082" pos="0 0 0.0082" />
+                    <default class="right_thumb_base_collision">
+                        <geom size="0.0179 0.017 0.02275" pos="-0.0179 0.009 0.0145" />
+                    </default>
+                </default>
+                <default class="right_proximal_collision">
+                    <geom size="0.0098 0.01375 0.027" pos="0 0 0.027" />
+                    <default class="right_thumb_proximal_collision">
+                        <geom size="0.0098 0.01375 0.00885" pos="0 0 0.00885" />
+                    </default>
+                </default>
+                <default class="right_medial_collision">
+                    <geom size="0.0098 0.01375 0.0192" pos="0 0 0.0192" />
+                    <default class="right_thumb_medial_collision">
+                        <geom size="0.0098 0.01375 0.0257" pos="0 0 0.0257" />
+                    </default>
+                </default>
+                <default class="right_distal_collision">
+                    <geom size="0.0098 0.01375 0.008" pos="0 0 0.008" />
+                    <default class="right_thumb_distal_collision">
+                        <geom size="0.0098 0.01375 0.0157" pos="0 0 0.0157" />
+                    </default>
+                </default>
+                <default class="right_fingertip_collision">
+                    <!-- <geom type="sphere" size="0.01235" pos="0 0 0.0515" /> -->
+                    <geom type="capsule" size="0.01235" fromto="0 0 0 0 0 0.0515" />
+                    <default class="right_thumbtip_collision">
+                        <!-- <geom type="sphere" size="0.01235" pos="0 0 0.0671" /> -->
+                        <geom type="capsule" size="0.01235" fromto="0 0 0 0 0 0.0671" />
+                    </default>
+                </default>
+            </default>
+
+            <default class="right_base_slide">
+                <joint type="slide" axis="0 1 0" range="-3.0 3.0" armature="1.0" damping="0.0"
+                    actuatorfrcrange="-1000.0 1000.0" />
+                <position ctrlrange="-3.0 3.0" kp="1000" dampratio="1.0" />
+            </default>
+            <default class="right_base_hinge">
+                <joint axis="0 0 1" range="-6.28 6.28" armature="1.0" damping="0.0"
+                    actuatorfrcrange="-1000.0 1000.0" />
+                <position ctrlrange="-6.28 6.28" kp="1000" dampratio="1.0" />
+            </default>
+            <default class="right_base">
+                <joint axis="0 0 1" range="-0.47 0.47" />
+                <position ctrlrange="-0.47 0.47" />
+            </default>
+            <default class="right_proximal">
+                <!-- <joint range="-0.196 1.61" />
+                <position ctrlrange="-0.196 1.61" /> -->
+                <joint range="0.196 1.61" />
+                <position ctrlrange="0.196 1.61" />
+            </default>
+            <default class="right_medial">
+                <!-- <joint range="-0.174 1.709" />
+                <position ctrlrange="-0.174 1.709" /> -->
+                <joint range="0.174 1.709" />
+                <position ctrlrange="0.174 1.709" />
+            </default>
+            <default class="right_distal">
+                <!-- <joint range="-0.227 1.618" />
+                <position ctrlrange="-0.227 1.618" /> -->
+                <joint range="0.227 1.618" />
+                <position ctrlrange="0.227 1.618" />
+            </default>
+            <default class="right_thumb_base">
+                <!-- <joint axis="-1 0 0" range="0.263 1.396" />
+                <position ctrlrange="0.263 1.396" /> -->
+                <joint axis="-1 0 0" range="0.263 1.396" />
+                <position ctrlrange="0.263 1.396" />
+            </default>
+            <default class="right_thumb_proximal">
+                <!-- <joint axis="0 0 1" range="-0.105 1.163" />
+                <position ctrlrange="-0.105 1.163" /> -->
+                <joint axis="0 0 1" range="0.105 1.163" />
+                <position ctrlrange="0.105 1.163" />
+            </default>
+            <default class="right_thumb_medial">
+                <!-- <joint range="-0.189 1.644" />
+                <position ctrlrange="-0.189 1.644" /> -->
+                <joint range="0.189 1.644" />
+                <position ctrlrange="0.189 1.644" />
+            </default>
+            <default class="right_thumb_distal">
+                <!-- <joint range="-0.162 1.719" />
+                <position ctrlrange="-0.162 1.719" /> -->
+                <joint range="0.162 1.719" />
+                <position ctrlrange="0.162 1.719" />
+            </default>
+        </default>
+    </default>
+
+
+    <visual>
+        <headlight diffuse="0.6 0.6 0.6" ambient="0.1 0.1 0.1" specular="0.9 0.9 0.9" />
+        <rgba haze="0.15 0.25 0.35 1" />
+        <global azimuth="140" elevation="-20" />
+    </visual>
+
+    <asset>
+        <material name="right_black" rgba="0.2 0.2 0.2 1" />
+        <material name="right_white" rgba="0.9 0.9 0.9 1" />
+        <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512"
+            height="3072" />
+        <texture type="2d" name="right_groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4"
+            rgb2="0.1 0.2 0.3"
+            markrgb="0.8 0.8 0.8" width="300" height="300" />
+        <material name="right_groundplane" texture="right_groundplane" texuniform="true"
+            texrepeat="5 5"
+            reflectance="0.2" />
+
+        <mesh name="right_base_link" file="base_link.stl" />
+        <mesh name="right_link_0.0" file="link_0.0.stl" />
+        <mesh name="right_link_1.0" file="link_1.0.stl" />
+        <mesh name="right_link_2.0" file="link_2.0.stl" />
+        <mesh name="right_link_3.0" file="link_3.0.stl" />
+        <mesh name="right_link_3.0_tip" file="link_3.0_tip.stl" />
+        <mesh name="right_link_12.0_right" file="link_12.0_right.stl" />
+        <mesh name="right_link_13.0" file="link_13.0.stl" />
+        <mesh name="right_link_14.0" file="link_14.0.stl" />
+        <mesh name="right_link_15.0" file="link_15.0.stl" />
+        <mesh name="right_link_15.0_tip" file="link_15.0_tip.stl" />
+    </asset>
+
+    <worldbody>
+        <light pos="0 0 3.5" dir="0 0 -1" directional="false" />
+        <body name="right_palm" quat="0 0 -1 1" childclass="metahand_right" gravcomp="1">
+            <!-- <inertial mass="0.4154" pos="0 0 0.0475" diaginertia="1e-4 1e-4 1e-4"/> -->
+            <site name="right_palm" pos="0 0 0" quat="1 0 0 0" class="mimic_right"
+                type="box"
+                size="0.01 0.02 0.03" />
+            <joint name="right_pos_x" axis="1 0 0" class="right_base_slide" />
+            <joint name="right_pos_y" axis="0 1 0" class="right_base_slide" />
+            <joint name="right_pos_z" axis="0 0 1" class="right_base_slide" />
+            <joint name="right_rot_x" axis="1 0 0" class="right_base_hinge" />
+            <joint name="right_rot_y" axis="0 1 0" class="right_base_hinge" />
+            <joint name="right_rot_z" axis="0 0 1" class="right_base_hinge" />
+            <geom class="right_palm_visual" mesh="right_base_link" />
+            <geom name="collision_hand_right_palm_0" class="right_palm_collision" />
+            <!-- First finger -->
+            <body name="right_ff_base" pos="0 0.0435 -0.001542" quat="0.999048 -0.0436194 0 0">
+                <joint name="right_index_base_joint" class="right_base" />
+                <geom class="right_base_visual" />
+
+                <body name="right_ff_proximal" pos="0 0 0.0164">
+                    <joint name="right_index_proximal_joint" class="right_proximal" />
+                    <geom class="right_proximal_visual" />
+                    <geom name="collision_hand_right_index_2" class="right_proximal_collision" />
+                    <body name="right_ff_medial" pos="0 0 0.054">
+                        <joint name="right_index_medial_joint" class="right_medial" />
+                        <geom class="right_medial_visual" />
+                        <geom name="collision_hand_right_index_1"
+                            class="right_medial_collision" />
+                        <body name="right_ff_distal" pos="0 0 0.0384">
+                            <joint name="right_index_distal_joint" class="right_distal" />
+                            <geom class="right_distal_visual" />
+
+                            <body name="right_ff_tip">
+                                <site name="right_index_tip" pos="0 0 0.0515" class="mimic_right" />
+                                <site name="track_hand_right_index_tip" pos="0 0 0.0515"
+                                    class="mimic_right" />
+                                <site name="trace_right_index_tip" pos="0 0 0.0515"
+                                    class="mimic_right" />
+                                <geom class="right_fingertip_visual" />
+                                <geom name="collision_hand_right_index_0"
+                                    class="right_fingertip_collision" />
+                            </body>
+                        </body>
+                    </body>
+                </body>
+            </body>
+            <!-- Middle finger -->
+            <body name="right_mf_base" pos="0 0 0.0007">
+                <joint name="right_middle_base_joint" class="right_base" />
+                <geom class="right_base_visual" />
+
+                <body name="right_mf_proximal" pos="0 0 0.0164">
+                    <joint name="right_middle_proximal_joint" class="right_proximal" />
+                    <geom class="right_proximal_visual" />
+                    <geom name="collision_hand_right_middle_2" class="right_proximal_collision" />
+                    <body name="right_mf_medial" pos="0 0 0.054">
+                        <joint name="right_middle_medial_joint" class="right_medial" />
+                        <geom class="right_medial_visual" />
+                        <geom name="collision_hand_right_middle_1"
+                            class="right_medial_collision" />
+                        <body name="right_mf_distal" pos="0 0 0.0384">
+                            <joint name="right_middle_distal_joint" class="right_distal" />
+                            <geom class="right_distal_visual" />
+
+                            <body name="right_mf_tip">
+                                <site name="right_middle_tip" pos="0 0 0.0515" class="mimic_right" />
+                                <site name="track_hand_right_middle_tip" pos="0 0 0.0515"
+                                    class="mimic_right" />
+                                <site name="trace_right_middle_tip" pos="0 0 0.0515"
+                                    class="mimic_right" />
+                                <geom class="right_fingertip_visual" />
+                                <geom name="collision_hand_right_middle_0"
+                                    class="right_fingertip_collision" />
+                            </body>
+                        </body>
+                    </body>
+                </body>
+            </body>
+            <!-- Ring finger -->
+            <body name="right_rf_base" pos="0 -0.0435 -0.001542" quat="0.999048 0.0436194 0 0">
+                <joint name="right_ring_base_joint" class="right_base" />
+                <geom class="right_base_visual" />
+
+                <body name="right_rf_proximal" pos="0 0 0.0164">
+                    <joint name="right_ring_proximal_joint" class="right_proximal" />
+                    <geom class="right_proximal_visual" />
+                    <geom name="collision_hand_right_ring_2" class="right_proximal_collision" />
+                    <body name="right_rf_medial" pos="0 0 0.054">
+                        <joint name="right_ring_medial_joint" class="right_medial" />
+                        <geom class="right_medial_visual" />
+                        <geom name="collision_hand_right_ring_1"
+                            class="right_medial_collision" />
+                        <body name="right_rf_distal" pos="0 0 0.0384">
+                            <joint name="right_ring_distal_joint" class="right_distal" />
+                            <geom class="right_distal_visual" />
+
+                            <body name="right_rf_tip">
+                                <site name="right_ring_tip" pos="0 0 0.0515" class="mimic_right" />
+                                <site name="track_hand_right_ring_tip" pos="0 0 0.0515"
+                                    class="mimic_right" />
+                                <site name="trace_right_ring_tip" pos="0 0 0.0515"
+                                    class="mimic_right" />
+                                <geom class="right_fingertip_visual" />
+                                <geom name="collision_hand_right_ring_0"
+                                    class="right_fingertip_collision" />
+                            </body>
+                        </body>
+                    </body>
+                </body>
+            </body>
+            <!-- Thumb -->
+            <body name="right_th_base" pos="-0.0182 0.019333 -0.045987"
+                quat="0.477714 -0.521334 -0.521334 -0.477714">
+                <joint name="right_thumb_base_joint" class="right_thumb_base" />
+                <geom class="right_visual" mesh="right_link_12.0_right" />
+
+                <body name="right_th_proximal" pos="-0.027 0.005 0.0399">
+                    <joint name="right_thumb_proximal_joint" class="right_thumb_proximal" />
+                    <geom class="right_visual" mesh="right_link_13.0" />
+
+                    <body name="right_th_medial" pos="0 0 0.0177">
+                        <joint name="right_thumb_medial_joint" class="right_thumb_medial" />
+                        <geom class="right_visual" mesh="right_link_14.0" />
+                        <geom name="collision_hand_right_thumb_2"
+                            class="right_thumb_medial_collision" />
+                        <body name="right_th_distal" pos="0 0 0.0514">
+                            <joint name="right_thumb_distal_joint" class="right_thumb_distal" />
+                            <geom class="right_visual" mesh="right_link_15.0" />
+                            <geom name="collision_hand_right_thumb_1"
+                                class="right_thumb_distal_collision" />
+                            <body name="right_th_tip">
+                                <site name="right_thumb_tip" pos="0 0 0.0671" class="mimic_right" />
+                                <site name="track_hand_right_thumb_tip" pos="0 0 0.0671"
+                                    class="mimic_right" />
+                                <site name="trace_right_thumb_tip" pos="0 0 0.0671"
+                                    class="mimic_right" />
+                                <geom class="right_thumbtip_visual" />
+                                <geom name="collision_hand_right_thumb_0"
+                                    class="right_thumbtip_collision" />
+                            </body>
+                        </body>
+                    </body>
+                </body>
+            </body>
+        </body>
+    </worldbody>
+
+    <actuator>
+        <position name="right_pos_x" joint="right_pos_x" class="right_base_slide" />
+        <position name="right_pos_y" joint="right_pos_y" class="right_base_slide" />
+        <position name="right_pos_z" joint="right_pos_z" class="right_base_slide" />
+        <position name="right_rot_x" joint="right_rot_x" class="right_base_hinge" />
+        <position name="right_rot_y" joint="right_rot_y" class="right_base_hinge" />
+        <position name="right_rot_z" joint="right_rot_z" class="right_base_hinge" />
+        <position name="right_ffa0" joint="right_index_base_joint" class="right_base" />
+        <position name="right_ffa1" joint="right_index_proximal_joint" class="right_proximal" />
+        <position name="right_ffa2" joint="right_index_medial_joint" class="right_medial" />
+        <position name="right_ffa3" joint="right_index_distal_joint" class="right_distal" />
+        <position name="right_mfa0" joint="right_middle_base_joint" class="right_base" />
+        <position name="right_mfa1" joint="right_middle_proximal_joint" class="right_proximal" />
+        <position name="right_mfa2" joint="right_middle_medial_joint" class="right_medial" />
+        <position name="right_mfa3" joint="right_middle_distal_joint" class="right_distal" />
+        <position name="right_rfa0" joint="right_ring_base_joint" class="right_base" />
+        <position name="right_rfa1" joint="right_ring_proximal_joint" class="right_proximal" />
+        <position name="right_rfa2" joint="right_ring_medial_joint" class="right_medial" />
+        <position name="right_rfa3" joint="right_ring_distal_joint" class="right_distal" />
+        <position name="right_tha0" joint="right_thumb_base_joint" class="right_thumb_base" />
+        <position name="right_tha1" joint="right_thumb_proximal_joint" class="right_thumb_proximal" />
+        <position name="right_tha2" joint="right_thumb_medial_joint" class="right_thumb_medial" />
+        <position name="right_tha3" joint="right_thumb_distal_joint" class="right_thumb_distal" />
+    </actuator>
+</mujoco>

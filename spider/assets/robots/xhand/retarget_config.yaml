@@ -1,0 +1,19 @@
+low_pass_alpha: 0.6
+scaling_factor: 1.4
+left:
+  urdf_path: xhand_left_6dof.urdf
+  target_origin_link: "left_hand_link"
+  human_origin_idx: 0
+  target_finger_links: ["left_hand_thumb_rota_tip", "left_hand_index_rota_tip", "left_hand_mid_tip", "left_hand_ring_tip", "left_hand_pinky_tip"]
+  human_finger_idxs: [16, 17, 18, 19, 20]
+  target_joint_names: ['L_forearm_tx_link_joint', 'L_forearm_ty_link_joint', 'L_forearm_tz_link_joint', 'L_forearm_roll_link_joint', 'L_forearm_pitch_link_joint', 'L_forearm_yaw_link_joint', 'left_hand_thumb_bend_joint', 'left_hand_thumb_rota_joint1', 'left_hand_thumb_rota_joint2', 'left_hand_index_bend_joint', 'left_hand_index_joint1', 'left_hand_index_joint2', 'left_hand_mid_joint1', 'left_hand_mid_joint2', 'left_hand_ring_joint1', 'left_hand_ring_joint2', 'left_hand_pinky_joint1', 'left_hand_pinky_joint2']
+  wrist_body: "left_hand_link"
+
+right:
+  urdf_path: xhand_right_6dof.urdf
+  target_origin_link: "right_hand_link"
+  human_origin_idx: 0
+  target_finger_links: ["right_hand_thumb_rota_tip", "right_hand_index_rota_tip", "right_hand_mid_tip", "right_hand_ring_tip", "right_hand_pinky_tip"]
+  human_finger_idxs: [16, 17, 18, 19, 20]
+  target_joint_names: ['R_forearm_tx_link_joint', 'R_forearm_ty_link_joint', 'R_forearm_tz_link_joint', 'R_forearm_roll_link_joint', 'R_forearm_pitch_link_joint', 'R_forearm_yaw_link_joint', 'right_hand_thumb_bend_joint', 'right_hand_thumb_rota_joint1', 'right_hand_thumb_rota_joint2', 'right_hand_index_bend_joint', 'right_hand_index_joint1', 'right_hand_index_joint2', 'right_hand_mid_joint1', 'right_hand_mid_joint2', 'right_hand_ring_joint1', 'right_hand_ring_joint2', 'right_hand_pinky_joint1', 'right_hand_pinky_joint2']
+  wrist_body: "right_hand_link"

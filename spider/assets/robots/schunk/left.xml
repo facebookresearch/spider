@@ -1,0 +1,310 @@
+<mujoco model="svh">
+  <compiler angle="radian" meshdir="assets/" />
+
+  <default>
+    <!-- disable all contacts and use explicit collision pairs -->
+    <geom density="800" condim="1" contype="0" conaffinity="0" />
+    <!-- with this setting, the response time is around 1s -->
+    <position kp="300" dampratio="1.0" inheritrange="1" />
+    <joint damping="0.0" armature="1.0" frictionloss="0.0" />
+    <site size="0.01" type="sphere" rgba="1 0 0 1" group="3" />
+  </default>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512"
+      height="3072" />
+    <texture type="2d" name="left_groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4"
+      rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8" width="300" height="300" />
+    <material name="left_groundplane" texture="left_groundplane" texuniform="true" texrepeat="5 5"
+      reflectance="0.2" />
+
+    <mesh name="left_d11" file="d11_left.obj" />
+    <mesh name="left_d12" file="d12_left.obj" />
+    <mesh name="left_d13" file="d13_left.obj" />
+    <mesh name="left_f11" file="f11.obj" />
+    <mesh name="left_f12" file="f12.obj" />
+    <mesh name="left_finger_tip" file="finger_tip.obj" />
+    <mesh name="left_f21" file="f21.obj" />
+    <mesh name="left_f22_f32" file="f22_f32.obj" />
+    <mesh name="left_f31" file="f31.obj" />
+    <mesh name="left_f41" file="f41.obj" />
+    <mesh name="left_f42" file="f42.obj" />
+  </asset>
+
+  <worldbody>
+    <body name="left_pos_x_link">
+      <camera name="left_track" pos="0.868 -0.348 -0.175"
+        xyaxes="0.037 0.999 -0.000 0.011 -0.000 1.000" />
+      <inertial pos="0 0 0" mass="0.01" diaginertia="0.01 0.01 0.01" />
+      <joint name="left_pos_x" pos="0 0 0" axis="1 0 0" type="slide" range="-5 5" />
+      <body name="left_pos_y_link">
+        <inertial pos="0 0 0" mass="0.01" diaginertia="0.01 0.01 0.01" />
+        <joint name="left_pos_y" pos="0 0 0" axis="0 1 0" type="slide" range="-5 5" />
+        <body name="left_pos_z_link">
+          <inertial pos="0 0 0" mass="0.01" diaginertia="0.01 0.01 0.01" />
+          <joint name="left_pos_z" pos="0 0 0" axis="0 0 1" type="slide" range="-5 5" />
+          <body name="left_rot_z_link">
+            <inertial pos="0 0 0" mass="0.01" diaginertia="0.01 0.01 0.01" />
+            <joint name="left_rot_z" pos="0 0 0" axis="0 0 1" range="-6.2 6.2" />
+            <body name="left_rot_x_link">
+              <inertial pos="0 0 0" mass="0.01" diaginertia="0.01 0.01 0.01" />
+              <joint name="left_rot_x" pos="0 0 0" axis="1 0 0" range="-6.2 6.2" />
+              <body name="left_hand_link">
+                <inertial pos="-6.48554e-05 -0.00451484 0.127324"
+                  quat="0.496466 0.503155 -0.508367 0.491853" mass="0.6112"
+                  diaginertia="0.0865419 0.0593417 0.0588699" />
+                <joint name="left_rot_y" pos="0 0 0" axis="0 1 0" range="-6.2 6.2" />
+
+                <!-- Palm visuals -->
+                <geom size="0.045 0.0225" pos="0 0 -0.009" type="cylinder" />
+                <geom size="0.025 0.025 0.013" pos="0 0 0.013" type="box" />
+                <geom size="0.0292 0.019 0.03205" pos="0.00573 -0.00963 0.05747" type="box" />
+                <geom size="0.021 0.019 0.0075" pos="0.01 -0.00963 0.096" type="box" />
+                <geom size="0.01" pos="-3.09209e-07 -0.01634 0.11" quat="0.500048 0.499952 -0.5 0.5" />
+
+                <!-- Collision: palm -->
+                <geom name="collision_hand_left_palm_0" type="box" size="0.03 0.02 0.04"
+                  pos="0 -0.01 0.06" rgba="0 1 0 1" group="3" />
+                <site name="left_palm" pos="0 0 0" type="box" size="0.01 0.02 0.03" quat="1 0 0 1" />
+
+                <!-- Thumb -->
+                <body name="left_hand_thumb_opp" pos="0.0169 0.01313 0"
+                  quat="0.700986 -0.0923056 0.0922868 0.701129">
+                  <inertial pos="0 0.002024 0.178636" quat="0.481281 0.518043 0.481281 0.518043"
+                    mass="0.0739" diaginertia="0.00165295 0.00110705 0.00103" />
+                  <joint name="left_hand_Thumb_Opposition" pos="0 0 0" axis="0 0 1" range="0 0.9879" />
+                  <geom size="0.012 0.0094 0.004" pos="0 0 0.02842" type="box" />
+                  <geom size="0.003 0.012 0.0165" pos="0.0125 0 0.04292" type="box" />
+                  <geom size="0.003 0.012 0.0165" pos="-0.0125 0 0.04292" type="box" />
+                  <body name="left_hand_thumb_proximal" pos="0 0 0.04596"
+                    quat="0.329787 -0.625494 0.329779 -0.625494">
+                    <inertial pos="0.240205 0.010733 0.00019"
+                      quat="0.0202941 0.706815 -0.0202941 0.706815" mass="0.41222"
+                      diaginertia="0.01796 0.016832 0.00408805" />
+                    <joint name="left_hand_Thumb_Flexion" pos="0 0 0" axis="0 0 1" range="-0.9704 0" />
+                    <geom type="mesh" mesh="left_d11" />
+                    <geom name="collision_hand_left_thumb_2" type="capsule" size="0.01"
+                      fromto="0 0 0 0.055 0 0" rgba="0 1 0 1" group="3" />
+                    <body name="left_hand_thumb_intermediate" pos="0.0485 0 0">
+                      <inertial pos="0.123157 -0.008382 -2.7e-05"
+                        quat="0.524056 0.524056 0.474727 0.474727" mass="0.08224"
+                        diaginertia="0.00139495 0.00103 0.000885049" />
+                      <joint name="left_hand_j3" pos="0 0 0" axis="0 0 1" range="-0.98506 0" />
+                      <geom type="mesh" mesh="left_d12" />
+                      <geom name="collision_hand_left_thumb_1" type="capsule" size="0.008"
+                        fromto="0 0 0 0.03 0 0" rgba="0 1 0 1" group="3" />
+                      <body name="left_hand_thumb_distal" pos="0.03 0 0">
+                        <inertial pos="0.007 0 0" quat="0.5 0.5 0.5 0.5" mass="0.02"
+                          diaginertia="2e-05 2e-05 1e-05" />
+                        <joint name="left_hand_j4" pos="0 0 0" axis="0 0 1" range="-1.406 0" />
+                        <geom type="mesh" mesh="left_d13" />
+                        <geom name="collision_hand_left_thumb_0" type="capsule" size="0.008"
+                          fromto="0 0 0 0.02 0 0" rgba="0 1 0 1" group="3" />
+                        <site name="left_thumb_tip" pos="0.02 0 0" />
+                        <site name="track_hand_left_thumb_tip" pos="0.02 0 0" />
+                        <site name="trace_hand_left_thumb_tip" pos="0.02 0 0" />
+                      </body>
+                    </body>
+                  </body>
+                </body>
+
+                <!-- Ring and Pinky base block -->
+                <body name="left_hand_block" pos="-0.0184 -0.00713 0.0375">
+                  <inertial pos="0.145071 -0.037868 0.323449"
+                    quat="0.951685 0.143658 0.0293436 -0.26981" mass="0.46184"
+                    diaginertia="0.019814 0.0171408 0.00778522" />
+                  <joint name="left_hand_block_joint" pos="0 0 0" axis="0 0 1" range="-0.98786 0" />
+                  <geom size="0.0123 0.0175 0.0282" pos="-0.016 0 0.02" type="box" />
+                  <geom size="0.006 0.009 0.0105" pos="-0.0032 -0.0083 0.048" type="box" />
+                  <body name="left_hand_ring_spread_link" pos="-0.003855 -0.006 0.0655"
+                    quat="0.500048 -0.5 -0.5 -0.499952">
+                    <inertial pos="0.003805 0.000386 0.100079"
+                      quat="0.69352 0.69352 -0.13795 0.13795" mass="0.02377"
+                      diaginertia="0.000214142 0.000185858 0.00011" />
+                    <joint name="left_hand_ring_spread" pos="0 0 0" axis="0 0 1" range="-0.28833 0" />
+                    <geom size="0.01" pos="0 0 -0.00321" />
+                    <body name="left_hand_ring_proximal" quat="0.707141 0.707073 0 0">
+                      <inertial pos="0.258283 -0.00154 0"
+                        quat="0.0178138 0.706882 -0.0178138 0.706882" mass="0.1377"
+                        diaginertia="0.00426 0.00411908 0.000540922" />
+                      <joint name="left_hand_Ring_Finger" pos="0 0 0" axis="0 0 1" range="0 0.98175" />
+                      <geom type="mesh" mesh="left_f31" />
+                      <geom name="collision_hand_left_ring_2" type="capsule" size="0.008"
+                        fromto="0 0 0 0.05004 0 0" rgba="0 1 0 1" group="3" />
+                      <body name="left_hand_ring_intermediate" pos="0.05004 0 0">
+                        <inertial pos="0.166851 -0.00362 0" quat="0.5 0.5 0.5 0.5" mass="0.04207"
+                          diaginertia="0.00047 0.0004 0.00019" />
+                        <joint name="left_hand_j12" pos="0 0 0" axis="0 0 1" range="0 1.334" />
+                        <geom type="mesh" mesh="left_f22_f32" />
+                        <geom name="collision_hand_left_ring_1" type="capsule" size="0.008"
+                          fromto="0 0 0 0.032 0 0" rgba="0 1 0 1" group="3" />
+                        <body name="left_hand_ring_distal" pos="0.032 0 0">
+                          <inertial pos="0.007 0 0" quat="0.5 0.5 0.5 0.5" mass="0.02"
+                            diaginertia="2e-05 2e-05 1e-05" />
+                          <joint name="left_hand_j16" pos="0 0 0" axis="0 0 1" range="0 1.395" />
+                          <geom type="mesh" mesh="left_finger_tip" />
+                          <geom name="collision_hand_left_ring_0" type="sphere" size="0.01"
+                            rgba="0 1 0 1" group="3" pos="0.01 0 0.00" />
+                          <site name="left_ring_tip" pos="0.01 0 0.00" />
+                          <site name="track_hand_left_ring_tip" pos="0.01 0 0.00" />
+                          <site name="trace_hand_left_ring_tip" pos="0.01 0 0.00" />
+                        </body>
+                      </body>
+                    </body>
+                  </body>
+                  <body name="left_hand_finger_spread_link" pos="-0.025355 -0.006 0.056"
+                    quat="0.500048 -0.5 -0.5 -0.499952">
+                    <inertial pos="0.003653 4.4e-05 0.100085"
+                      quat="0.69352 0.69352 -0.13795 0.13795" mass="0.02377"
+                      diaginertia="0.000214142 0.000185858 0.00011" />
+                    <joint name="left_hand_Finger_Spread" pos="0 0 0" axis="0 0 1" range="-0.5829 0" />
+                    <geom size="0.01" pos="0 0 -0.00321" />
+                    <body name="left_hand_pinky_proximal" quat="0.707141 0.707073 0 0">
+                      <inertial pos="0.232293 0.00622 0"
+                        quat="0.00793951 0.707062 -0.00793951 0.707062" mass="0.12544"
+                        diaginertia="0.00328 0.00316135 0.000488652" />
+                      <joint name="left_hand_Pinky" pos="0 0 0" axis="0 0 1" range="0 0.98175" />
+                      <geom type="mesh" mesh="left_f41" />
+                      <geom name="collision_hand_left_pinky_2" type="capsule" size="0.008"
+                        fromto="0 0 0 0.04454 0 0" rgba="0 1 0 1" group="3" />
+                      <body name="left_hand_pinky_intermediate" pos="0.04454 0 0">
+                        <inertial pos="0.007 0 0" quat="0.5 0.5 0.5 0.5" mass="0.02"
+                          diaginertia="2e-06 2e-06 8e-07" />
+                        <joint name="left_hand_j13" pos="0 0 0" axis="0 0 1" range="0 1.334" />
+                        <geom type="mesh" mesh="left_f42" />
+                        <geom name="collision_hand_left_pinky_1" type="capsule" size="0.008"
+                          fromto="0 0 0 0.022 0 0" rgba="0 1 0 1" group="3" />
+                        <body name="left_hand_pinky_distal" pos="0.022 0 0">
+                          <inertial pos="0.007 0 0" quat="0.5 0.5 0.5 0.5" mass="0.02"
+                            diaginertia="2e-05 2e-05 1e-05" />
+                          <joint name="left_hand_j17" pos="0 0 0" axis="0 0 1" range="0 1.3971" />
+                          <geom type="mesh" mesh="left_finger_tip" />
+                          <geom name="collision_hand_left_pinky_0" type="sphere" size="0.01"
+                            rgba="0 1 0 1" group="3" pos="0.01 0 0.00" />
+                          <site name="left_pinky_tip" pos="0.01 0 0.00" />
+                          <site name="track_hand_left_pinky_tip" pos="0.01 0 0.00" />
+                          <site name="trace_hand_left_pinky_tip" pos="0.01 0 0.00" />
+                        </body>
+                      </body>
+                    </body>
+                  </body>
+                </body>
+
+                <!-- Index finger -->
+                <body name="left_hand_index_spread_link" pos="0.025 -0.01313 0.11"
+                  quat="0.500048 0.499952 -0.5 0.5">
+                  <inertial pos="0.003634 0.000206 -0.09885" quat="0.69352 0.69352 0.13795 -0.13795"
+                    mass="0.02383" diaginertia="0.000214142 0.000185858 0.00011" />
+                  <joint name="left_hand_index_spread" pos="0 0 0" axis="0 0 1" range="-0.28833 0" />
+                  <geom size="0.01" pos="0 0 0.00121" />
+                  <body name="left_hand_index_proximal" quat="0.707141 -0.707073 0 0">
+                    <inertial pos="0.261673 0.003521 0"
+                      quat="-0.00373415 0.707097 0.00373415 0.707097" mass="0.13003"
+                      diaginertia="0.00344 0.00335032 0.000509683" />
+                    <joint name="left_hand_Index_Finger_Proximal" pos="0 0 0" axis="0 0 1"
+                      range="0 0.79849" />
+                    <geom type="mesh" mesh="left_f11" />
+                    <geom name="collision_hand_left_index_2" type="capsule" size="0.008"
+                      fromto="0 0 0 0.04804 0 0" rgba="0 1 0 1" group="3" />
+                    <body name="left_hand_index_intermediate" pos="0.04804 0 0">
+                      <inertial pos="0.01 0 0" quat="0.5 0.5 0.5 0.5" mass="0.024"
+                        diaginertia="1.96667e-06 1.96667e-06 1.96667e-06" />
+                      <joint name="left_hand_Index_Finger_Distal" pos="0 0 0" axis="0 0 1"
+                        range="0 1.334" />
+                      <geom type="mesh" mesh="left_f12" />
+                      <geom name="collision_hand_left_index_1" type="capsule" size="0.008"
+                        fromto="0 0 0 0.026 0 0" rgba="0 1 0 1" group="3" />
+                      <body name="left_hand_index_distal" pos="0.026 0 0">
+                        <inertial pos="0.007 0 0" quat="0.5 0.5 0.5 0.5" mass="0.02"
+                          diaginertia="2e-05 2e-05 1e-05" />
+                        <joint name="left_hand_j14" pos="0 0 0" axis="0 0 1" range="0 1.394" />
+                        <geom type="mesh" mesh="left_finger_tip" />
+                        <geom name="collision_hand_left_index_0" type="sphere" size="0.01"
+                          rgba="0 1 0 1" group="3" pos="0.01 0 0.00" />
+                        <site name="left_index_tip" pos="0.01 0 0.00" />
+                        <site name="track_hand_left_index_tip" pos="0.01 0 0.00" />
+                        <site name="trace_hand_left_index_tip" pos="0.01 0 0.00" />
+                      </body>
+                    </body>
+                  </body>
+                </body>
+
+                <!-- Middle finger -->
+                <body name="left_hand_middle_proximal" pos="0 -0.01313 0.11"
+                  quat="0.707107 -3.40567e-05 -0.707107 3.40567e-05">
+                  <inertial pos="0.271122 0.00413 0" quat="-0.003335 0.707099 0.003335 0.707099"
+                    mass="0.13474" diaginertia="0.0038 0.00370028 0.000519717" />
+                  <joint name="left_hand_Middle_Finger_Proximal" pos="0 0 0" axis="0 0 1"
+                    range="0 0.79849" />
+                  <geom type="mesh" mesh="left_f21" />
+                  <geom name="collision_hand_left_middle_2" type="capsule" size="0.008"
+                    fromto="0 0 0 0.05004 0 0" rgba="0 1 0 1" group="3" />
+                  <body name="left_hand_middle_intermediate" pos="0.05004 0 0">
+                    <inertial pos="0.16683 -0.003774 0" quat="0.5 0.5 0.5 0.5" mass="0.0422"
+                      diaginertia="0.00047 0.0004 0.0002" />
+                    <joint name="left_hand_Middle_Finger_Distal" pos="0 0 0" axis="0 0 1"
+                      range="0 1.334" />
+                    <geom type="mesh" mesh="left_f22_f32" />
+                    <geom name="collision_hand_left_middle_1" type="capsule" size="0.008"
+                      fromto="0 0 0 0.032 0 0" rgba="0 1 0 1" group="3" />
+                    <body name="left_hand_middle_distal" pos="0.032 0 0">
+                      <inertial pos="0.007 0 0" quat="0.5 0.5 0.5 0.5" mass="0.02"
+                        diaginertia="2e-05 2e-05 1e-05" />
+                      <joint name="left_hand_j15" pos="0 0 0" axis="0 0 1" range="0 1.334" />
+                      <geom type="mesh" mesh="left_finger_tip" />
+                      <geom name="collision_hand_left_middle_0" type="sphere" size="0.01"
+                        rgba="0 1 0 1" group="3" pos="0.01 0 0.00" />
+                      <site name="left_middle_tip" pos="0.01 0 0.00" />
+                      <site name="track_hand_left_middle_tip" pos="0.01 0 0.00" />
+                      <site name="trace_hand_left_middle_tip" pos="0.01 0 0.00" />
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <!-- Global position and rotation joints -->
+    <position name="left_pos_x_position" joint="left_pos_x" kp="1000" />
+    <position name="left_pos_y_position" joint="left_pos_y" kp="1000" />
+    <position name="left_pos_z_position" joint="left_pos_z" kp="1000" />
+    <position name="left_rot_z_position" joint="left_rot_z" kp="1000" />
+    <position name="left_rot_x_position" joint="left_rot_x" kp="1000" />
+    <position name="left_rot_y_position" joint="left_rot_y" kp="1000" />
+
+    <!-- Thumb joints -->
+    <position name="left_thumb_opposition_position" joint="left_hand_Thumb_Opposition" />
+    <position name="left_thumb_flexion_position" joint="left_hand_Thumb_Flexion" />
+    <position name="left_thumb_intermediate_position" joint="left_hand_j3" />
+    <position name="left_thumb_distal_position" joint="left_hand_j4" />
+
+    <!-- Index joints -->
+    <position name="left_index_proximal_position" joint="left_hand_Index_Finger_Proximal" />
+    <position name="left_index_intermediate_position" joint="left_hand_Index_Finger_Distal" />
+    <position name="left_index_distal_position" joint="left_hand_j14" />
+    <position name="left_index_spread_position" joint="left_hand_index_spread" />
+
+    <!-- Middle joints -->
+    <position name="left_middle_proximal_position" joint="left_hand_Middle_Finger_Proximal" />
+    <position name="left_middle_intermediate_position" joint="left_hand_Middle_Finger_Distal" />
+    <position name="left_middle_distal_position" joint="left_hand_j15" />
+    <position name="left_block_position" joint="left_hand_block_joint" />
+
+    <!-- Ring joints -->
+    <position name="left_ring_spread_position" joint="left_hand_ring_spread" />
+    <position name="left_ring_proximal_position" joint="left_hand_Ring_Finger" />
+    <position name="left_ring_intermediate_position" joint="left_hand_j12" />
+    <position name="left_ring_distal_position" joint="left_hand_j16" />
+
+    <!-- Pinky joints -->
+    <position name="left_finger_spread_position" joint="left_hand_Finger_Spread" />
+    <position name="left_pinky_proximal_position" joint="left_hand_Pinky" />
+    <position name="left_pinky_intermediate_position" joint="left_hand_j13" />
+    <position name="left_pinky_distal_position" joint="left_hand_j17" />
+  </actuator>
+</mujoco>

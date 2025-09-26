@@ -1,0 +1,99 @@
+<mujoco>
+    <asset>
+        <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512"
+            height="3072" />
+        <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4"
+            rgb2="0.1 0.2 0.3"
+            markrgb="0.8 0.8 0.8" width="300" height="300" />
+        <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5"
+            reflectance="0.2" />
+    </asset>
+
+    <default>
+        <default class="fingertip">
+            <site size="0.01" type="sphere" rgba="1 0 0 0.5" group="0" />
+            <geom type="sphere" size="0.01" rgba="1 0 0 0.5" group="0" contype="0"
+                conaffinity="0" />
+        </default>
+        <default class="wrist">
+            <site size="0.01 0.02 0.03" type="box" rgba="1 0 0 1" group="0" />
+        </default>
+    </default>
+
+    <worldbody>
+        <light pos="0 0 3.5" dir="0 0 -1" directional="false" />
+        <geom type="plane" size="100 100 0.1" pos="0 0 0" material="groundplane" conaffinity="0"
+            contype="0" rgba="1.0 1.0 1.0 0.1"/>
+        <camera name="front" pos="1.393 -1.169 0.662" xyaxes="0.643 0.766 0.000 -0.262 0.220 0.940" mode="trackcom"/>
+
+
+        <!-- add wrist body -->
+        <body name="right_wrist" pos="0 0 0" mocap="true">
+            <site name="right_wrist" pos="0 0 0" class="wrist" />
+        </body>
+
+        <!-- add body for mocap -->
+        <body name="right_thumb_tip" pos="0 0 0" mocap="true">
+            <site name="right_thumb_tip" pos="0 0 0" class="fingertip" />
+            <geom name="right_thumb_tip" class="fingertip" />
+        </body>
+        <body name="right_index_tip" pos="0 0 0" mocap="true">
+            <site name="right_index_tip" pos="0 0 0" class="fingertip" />
+            <geom name="right_index_tip" class="fingertip" />
+        </body>
+        <body name="right_middle_tip" pos="0 0 0" mocap="true">
+            <site name="right_middle_tip" pos="0 0 0" class="fingertip" />
+            <geom name="right_middle_tip" class="fingertip" />
+        </body>
+        <body name="right_ring_tip" pos="0 0 0" mocap="true">
+            <site name="right_ring_tip" pos="0 0 0" class="fingertip" />
+            <geom name="right_ring_tip" class="fingertip" />
+        </body>
+        <body name="right_pinky_tip" pos="0 0 0" mocap="true">
+            <site name="right_pinky_tip" pos="0 0 0" class="fingertip" />
+            <geom name="right_pinky_tip" class="fingertip" />
+        </body>
+
+
+        <!-- add left wrist and fingertips mocap bodies -->
+        <body name="left_wrist" pos="0 0 0" mocap="true">
+            <site name="left_wrist" pos="0 0 0" class="wrist" />
+        </body>
+
+        <body name="left_thumb_tip" pos="0 0 0" mocap="true">
+            <site name="left_thumb_tip" pos="0 0 0" class="fingertip" />
+            <geom name="left_thumb_tip" class="fingertip" />
+        </body>
+        <body name="left_index_tip" pos="0 0 0" mocap="true">
+            <site name="left_index_tip" pos="0 0 0" class="fingertip" />
+            <geom name="left_index_tip" class="fingertip" />
+        </body>
+        <body name="left_middle_tip" pos="0 0 0" mocap="true">
+            <site name="left_middle_tip" pos="0 0 0" class="fingertip" />
+            <geom name="left_middle_tip" class="fingertip" />
+        </body>
+        <body name="left_ring_tip" pos="0 0 0" mocap="true">
+            <site name="left_ring_tip" pos="0 0 0" class="fingertip" />
+            <geom name="left_ring_tip" class="fingertip" />
+        </body>
+        <body name="left_pinky_tip" pos="0 0 0" mocap="true">
+            <site name="left_pinky_tip" pos="0 0 0" class="fingertip" />
+            <geom name="left_pinky_tip" class="fingertip" />
+        </body>
+
+
+    </worldbody>
+
+    <sensor>
+        <touch name="right_thumb_tip" site="right_thumb_tip" />
+        <touch name="right_index_tip" site="right_index_tip" />
+        <touch name="right_middle_tip" site="right_middle_tip" />
+        <touch name="right_ring_tip" site="right_ring_tip" />
+        <touch name="right_pinky_tip" site="right_pinky_tip" />
+        <touch name="left_thumb_tip" site="left_thumb_tip" />
+        <touch name="left_index_tip" site="left_index_tip" />
+        <touch name="left_middle_tip" site="left_middle_tip" />
+        <touch name="left_ring_tip" site="left_ring_tip" />
+        <touch name="left_pinky_tip" site="left_pinky_tip" />
+    </sensor>
+</mujoco>

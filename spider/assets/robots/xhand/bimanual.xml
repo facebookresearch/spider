@@ -1,0 +1,4 @@
+<mujoco model="bimanual">
+    <include file="right.xml" />
+    <include file="left.xml" />
+</mujoco>

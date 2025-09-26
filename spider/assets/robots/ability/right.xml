@@ -1,0 +1,315 @@
+<mujoco model="ability_hand">
+  <compiler angle="radian" meshdir="assets/" />
+
+  <default>
+    <!-- disable all contacts and use explicit collision pairs -->
+    <geom density="800" condim="1" contype="0" conaffinity="0" />
+    <!-- with this setting, the response time is around 1s -->
+    <position kp="300" dampratio="1.0" inheritrange="1" />
+    <joint damping="0.0" armature="1.0" frictionloss="0.0" />
+    <site size="0.01" type="sphere" rgba="1 0 0 1" group="3" />
+  </default>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512"
+      height="3072" />
+    <texture type="2d" name="right_groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4"
+      rgb2="0.1 0.2 0.3"
+      markrgb="0.8 0.8 0.8" width="300" height="300" />
+    <material name="right_groundplane" texture="right_groundplane" texuniform="true"
+      texrepeat="5 5"
+      reflectance="0.2" />
+    <mesh name="right_wristmesh" content_type="model/obj" file="wristmesh.obj" />
+    <mesh name="right_wristmesh_C" content_type="model/obj" file="wristmesh_C.obj" />
+    <mesh name="right_FB_palm_ref" content_type="model/obj" file="FB_palm_ref.obj" />
+    <mesh name="right_thumb-F1" content_type="model/obj" file="thumb-F1.obj" />
+    <mesh name="right_thumb-F1_C" content_type="model/obj" file="thumb-F1_C.obj" />
+    <mesh name="right_thumb-F2" content_type="model/obj" file="thumb-F2.obj" />
+    <mesh name="right_thumb-F2_C" content_type="model/obj" file="thumb-F2_C.obj" />
+    <mesh name="right_idx-F1" content_type="model/obj" file="idx-F1.obj" />
+    <mesh name="right_idx-F2" content_type="model/obj" file="idx-F2.obj" />
+    <mesh name="right_idx-F2_C" content_type="model/obj" file="idx-F2_C.obj" />
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 3.5" dir="0 0 -1" directional="false" />
+    <body name="L_forearm_ty_link">
+      <camera name="right_track" pos="0.868 -0.348 -0.175"
+        xyaxes="0.037 0.999 -0.000 0.011 -0.000 1.000" />
+      <inertial pos="0 0 0" mass="0.1" diaginertia="0.01 0.01 0.01" />
+      <joint name="L_forearm_tx_link_joint" pos="0 0 0" axis="1 0 0" type="slide" range="-5 5" />
+      <body name="L_forearm_tz_link">
+        <inertial pos="0 0 0" mass="0.1" diaginertia="0.01 0.01 0.01" />
+        <joint name="L_forearm_ty_link_joint" pos="0 0 0" axis="0 1 0" type="slide" range="-5 5" />
+        <body name="L_forearm_roll_link">
+          <inertial pos="0 0 0" mass="0.1" diaginertia="0.01 0.01 0.01" />
+          <joint name="L_forearm_tz_link_joint" pos="0 0 0" axis="0 0 1" type="slide" range="-5 5" />
+          <body name="L_forearm_pitch_link">
+            <inertial pos="0 0 0" mass="0.1" diaginertia="0.01 0.01 0.01" />
+            <joint name="L_forearm_roll_link_joint" pos="0 0 0" axis="0 0 1" range="-6.2 6.2" />
+            <body name="L_forearm_yaw_link">
+              <inertial pos="0 0 0" mass="0.1" diaginertia="0.01 0.01 0.01" />
+              <joint name="L_forearm_pitch_link_joint" pos="0 0 0" axis="1 0 0" range="-6.2 6.2"
+              />
+              <body name="right_base">
+                <inertial pos="0.0192248 0.0101927 0.0246965"
+                  quat="0.978669 -0.196697 -0.0581394 0.0116851" mass="0.6"
+                  diaginertia="0.00200455 0.00200455 0.00178617" />
+                <joint name="L_forearm_yaw_link_joint" pos="0 0 0" axis="0 -1 0" range="-6.2 6.2" />
+                <geom name="right_wrist_mesh" type="mesh" contype="0" conaffinity="0" group="1"
+                  density="0" mesh="right_wristmesh" />
+                <geom name="collision_hand_right_palm_0" type="mesh" mesh="right_wristmesh_C"
+                  group="3" />
+                <geom name="right_palm_mesh" pos="0.0240477 0.00378125 0.0323296"
+                  quat="0.0442297 0.00061027 0.999021 2.70192e-05" type="mesh" contype="0"
+                  conaffinity="0" group="1" density="0" mesh="right_FB_palm_ref" />
+                <geom name="collision_hand_right_palm_1" pos="0.0240477 0.00378125 0.0323296"
+                  quat="0.0442297 0.00061027 0.999021 2.70192e-05" type="mesh"
+                  mesh="right_FB_palm_ref" group="3" />
+                <geom type="box" name="collision_hand_right_palm_2" size="0.03 0.02 0.04"
+                  pos="0 0 0.05" contype="0" conaffinity="0" group="3"
+                  density="0" rgba="0 1 0 1" />
+                <site name="right_palm" pos="0 0 0" type="box"
+                  size="0.01 0.02 0.03" quat="1 0 0 -1" />
+                <body name="right_thumb_L1" pos="0.0240477 0.00378125 0.0323296"
+                  quat="-0.00419696 0.994514 -0.0947972 0.0440301">
+                  <inertial pos="0.014606 -0.00189085 -0.00311554"
+                    quat="0.306728 0.531258 0.293089 0.733336" mass="0.00268342"
+                    diaginertia="8.14795e-05 7.42718e-05 1.14409e-05" />
+                  <joint name="right_thumb_q1" pos="0 0 0" axis="0 0 -1" range="-1.8 -0.6"
+                  />
+                  <geom name="right_thumb_mesh_1" pos="0.0278284 0 -0.0147507"
+                    quat="-0.608761 0.793353 0 0" type="mesh" contype="0" conaffinity="0" group="1"
+                    density="0" mesh="right_thumb-F1" />
+                  <geom pos="0.0278284 0 -0.0147507" quat="-0.608761 0.793353 0 0" type="mesh"
+                    mesh="right_thumb-F1_C" />
+                  <!-- <geom name="collision_hand_right_thumb_1" type="sphere" size="0.01"
+                    pos="0.0278284 0 -0.0147507" contype="0" conaffinity="0" group="3"
+                    density="0" rgba="0 1 0 1" /> -->
+                  <body name="right_thumb_L2" pos="0.0278284 0 -0.0147507"
+                    quat="-0.608761 0.793353 0 0">
+                    <inertial pos="0.0300205 0.00559476 -0.00415044"
+                      quat="0.00721249 0.656735 -0.223684 0.720148" mass="0.0055"
+                      diaginertia="0.00180207 0.00170892 0.000287855" />
+                    <joint name="right_thumb_q2" pos="0 0 0" axis="0 0 1" range="0 1.0"
+                    />
+                    <geom name="right_thumb_mesh_2" pos="0.0651867 0.0233402 -0.00393483"
+                      quat="3.21978e-07 0.985259 0.171069 5.59046e-08" type="mesh" contype="0"
+                      conaffinity="0" group="1" density="0" mesh="right_thumb-F2" />
+                    <geom pos="0.0651867 0.0233402 -0.00393483"
+                      quat="3.21978e-07 0.985259 0.171069 5.59046e-08" type="mesh"
+                      mesh="right_thumb-F2_C" />
+                    <!-- <geom name="collision_hand_right_thumb_0" type="sphere" size="0.007"
+                      pos="0.0651867 0.0233402 -0.00393483" contype="0" conaffinity="0" group="3"
+                      density="0" rgba="0 1 0 1" /> -->
+                    <geom name="collision_hand_right_thumb_0" type="capsule" size="0.007"
+                      fromto="0 0 0 0.0651867 0.0233402 -0.00393483" contype="0" conaffinity="0"
+                      group="3"
+                      density="0" rgba="0 1 0 1" />
+                    <site name="right_thumb_tip" pos="0.0651867 0.0233402 -0.00393483" />
+                    <site name="track_hand_right_thumb_tip" pos="0.0651867 0.0233402 -0.00393483" />
+                    <site name="trace_hand_right_thumb_tip" pos="0.0651867 0.0233402 -0.00393483" />
+                  </body>
+                </body>
+                <body name="right_index_L1" pos="0.0279216 -0.00927034 0.0958706"
+                  quat="-0.714459 -0.129917 0.685906 0.0469401">
+                  <inertial pos="0.0224191 -0.000157982 -1.31987e-05"
+                    quat="-0.00406251 0.706621 0.00934715 0.707518" mass="0.00635888"
+                    diaginertia="0.000381765 0.000369601 2.96432e-05" />
+                  <joint name="right_index_q1" pos="0 0 0" axis="0 0 -1" range="0 1.0"
+                  />
+                  <geom name="right_index_mesh_1" pos="0.0384727 0.0032577 0"
+                    quat="0.999108 0 0 0.0422244" type="mesh" contype="0" conaffinity="0" group="1"
+                    density="0" mesh="right_idx-F1" />
+                  <geom size="0.0085" pos="0.036 -0.00175 0" />
+                  <geom size="0.014 0.006 0.008" pos="0.019 -0.0045 0" quat="0.999108 0 0 0.0422374"
+                    type="box" />
+                  <geom size="0.01 0.005 0.008" pos="0.018 0.006 0" quat="0.999108 0 0 0.0422374"
+                    type="box" />
+                  <geom size="0.006 0.006 0.001" pos="-0.001 0 0.007" quat="0.999108 0 0 0.0422374"
+                    type="box" />
+                  <geom size="0.006 0.006 0.001" pos="-0.001 0 -0.007" quat="0.999108 0 0 0.0422374"
+                    type="box" />
+                  <geom name="collision_hand_right_index_1" type="sphere" size="0.01"
+                    pos="0.019 -0.0045 0" contype="0" conaffinity="0" group="3"
+                    density="0" rgba="0 1 0 1" />
+                  <body name="right_index_L2" pos="0.0384727 0.0032577 0"
+                    quat="0.999108 0 0 0.0422244">
+                    <inertial pos="0.0133682 -0.00875392 -2.886e-05"
+                      quat="-0.161363 0.673074 0.216775 0.688434" mass="0.00645"
+                      diaginertia="0.000264645 0.000263553 1.71391e-05" />
+                    <joint name="right_index_q2" pos="0 0 0" axis="0 0 -1" range="0 1.0"
+                    />
+                    <geom name="right_index_mesh_2" pos="0.0091241 0 0" quat="1 0 0 0" type="mesh"
+                      contype="0" conaffinity="0" group="1" density="0" mesh="right_idx-F2" />
+                    <geom type="mesh" mesh="right_idx-F2_C" />
+                    <geom size="0.007" pos="0.03 -0.016 0" />
+                    <geom name="collision_hand_right_index_0" type="capsule" size="0.007"
+                      fromto="0 0 0 0.03 -0.016 0" contype="0" conaffinity="0" group="3"
+                      density="0" rgba="0 1 0 1" />
+                    <site name="right_index_tip" pos="0.03 -0.016 0" />
+                    <site name="track_hand_right_index_tip" pos="0.03 -0.016 0" />
+                    <site name="trace_hand_right_index_tip" pos="0.03 -0.016 0" />
+                  </body>
+                </body>
+                <body name="right_middle_L1" pos="0.00841718 -0.0115172 0.0990634"
+                  quat="-0.698395 -0.103508 0.704562 0.0715738">
+                  <inertial pos="0.0224191 -0.000157982 -1.31987e-05"
+                    quat="-0.00406251 0.706621 0.00934715 0.707518" mass="0.00635888"
+                    diaginertia="0.000381765 0.000369601 2.96432e-05" />
+                  <joint name="right_middle_q1" pos="0 0 0" axis="0 0 -1" range="0 1.0"
+                  />
+                  <geom name="right_middle_mesh_1" pos="0.0384727 0.0032577 0"
+                    quat="0.999108 0 0 0.0422244" type="mesh" contype="0" conaffinity="0" group="1"
+                    density="0" mesh="right_idx-F1" />
+                  <geom size="0.0085" pos="0.036 -0.00175 0" />
+                  <geom size="0.014 0.006 0.008" pos="0.019 -0.0045 0" quat="0.999108 0 0 0.0422374"
+                    type="box" />
+                  <geom size="0.01 0.005 0.008" pos="0.018 0.006 0" quat="0.999108 0 0 0.0422374"
+                    type="box" />
+                  <geom size="0.006 0.006 0.001" pos="-0.001 0 0.007" quat="0.999108 0 0 0.0422374"
+                    type="box" />
+                  <geom size="0.006 0.006 0.001" pos="-0.001 0 -0.007" quat="0.999108 0 0 0.0422374"
+                    type="box" />
+                  <geom name="collision_hand_right_middle_1" type="sphere" size="0.01"
+                    pos="0.019 -0.0045 0" contype="0" conaffinity="0" group="3"
+                    density="0" rgba="0 1 0 1" />
+                  <body name="right_middle_L2" pos="0.0384727 0.0032577 0"
+                    quat="0.999108 0 0 0.0422244">
+                    <inertial pos="0.0133682 -0.00875392 -2.886e-05"
+                      quat="-0.161363 0.673074 0.216775 0.688434" mass="0.00645"
+                      diaginertia="0.000264645 0.000263553 1.71391e-05" />
+                    <joint name="right_middle_q2" pos="0 0 0" axis="0 0 -1" range="0 1.0"
+                    />
+                    <geom name="right_middle_mesh_2" pos="0.0091241 0 0" quat="1 0 0 0" type="mesh"
+                      contype="0" conaffinity="0" group="1" density="0" mesh="right_idx-F2" />
+                    <geom type="mesh" mesh="right_idx-F2_C" />
+                    <geom size="0.007" pos="0.03 -0.016 0" />
+                    <geom name="collision_hand_right_middle_0" type="capsule" size="0.007"
+                      fromto="0 0 0 0.03 -0.016 0" contype="0" conaffinity="0" group="3"
+                      density="0" rgba="0 1 0 1" />
+                    <site name="right_middle_tip" pos="0.03 -0.016 0" />
+                    <site name="track_hand_right_middle_tip" pos="0.03 -0.016 0" />
+                    <site name="trace_hand_right_middle_tip" pos="0.03 -0.016 0" />
+                  </body>
+                </body>
+                <body name="right_ring_L1" pos="-0.0117529 -0.0103946 0.0967038"
+                  quat="-0.681173 -0.0769649 0.721351 0.0986547">
+                  <inertial pos="0.0224191 -0.000157982 -1.31987e-05"
+                    quat="-0.00406251 0.706621 0.00934715 0.707518" mass="0.00635888"
+                    diaginertia="0.000381765 0.000369601 2.96432e-05" />
+                  <joint name="right_ring_q1" pos="0 0 0" axis="0 0 -1" range="0 1.0" />
+                  <geom name="right_ring_mesh_1" pos="0.0384727 0.0032577 0"
+                    quat="0.999108 0 0 0.0422244"
+                    type="mesh" contype="0" conaffinity="0" group="1" density="0"
+                    mesh="right_idx-F1" />
+                  <geom size="0.0085" pos="0.036 -0.00175 0" />
+                  <geom size="0.014 0.006 0.008" pos="0.019 -0.0045 0" quat="0.999108 0 0 0.0422374"
+                    type="box" />
+                  <geom size="0.01 0.005 0.008" pos="0.018 0.006 0" quat="0.999108 0 0 0.0422374"
+                    type="box" />
+                  <geom size="0.006 0.006 0.001" pos="-0.001 0 0.007" quat="0.999108 0 0 0.0422374"
+                    type="box" />
+                  <geom size="0.006 0.006 0.001" pos="-0.001 0 -0.007" quat="0.999108 0 0 0.0422374"
+                    type="box" />
+                  <geom name="collision_hand_right_ring_1" type="sphere" size="0.01"
+                    pos="0.019 -0.0045 0" contype="0" conaffinity="0" group="3"
+                    density="0" rgba="0 1 0 1" />
+                  <body name="right_ring_L2" pos="0.0384727 0.0032577 0"
+                    quat="0.999108 0 0 0.0422244">
+                    <inertial pos="0.0133682 -0.00875392 -2.886e-05"
+                      quat="-0.161363 0.673074 0.216775 0.688434" mass="0.00645"
+                      diaginertia="0.000264645 0.000263553 1.71391e-05" />
+                    <joint name="right_ring_q2" pos="0 0 0" axis="0 0 -1" range="0 1.0"
+                    />
+                    <geom name="right_ring_mesh_2" pos="0.0091241 0 0" quat="1 0 0 0" type="mesh"
+                      contype="0" conaffinity="0" group="1" density="0" mesh="right_idx-F2" />
+                    <geom type="mesh" mesh="right_idx-F2_C" />
+                    <geom size="0.007" pos="0.03 -0.016 0" />
+                    <geom name="collision_hand_right_ring_0" type="capsule" size="0.007"
+                      fromto="0 0 0 0.03 -0.016 0" contype="0" conaffinity="0" group="3"
+                      density="0" rgba="0 1 0 1" />
+                    <site name="right_ring_tip" pos="0.03 -0.016 0" />
+                    <site name="track_hand_right_ring_tip" pos="0.03 -0.016 0" />
+                    <site name="trace_hand_right_ring_tip" pos="0.03 -0.016 0" />
+                  </body>
+                </body>
+                <body name="right_pinky_L1" pos="-0.0308633 -0.00716283 0.0907346"
+                  quat="-0.681748 -0.0544096 0.719226 0.122363">
+                  <inertial pos="0.0224191 -0.000157982 -1.31987e-05"
+                    quat="-0.00406251 0.706621 0.00934715 0.707518" mass="0.00635888"
+                    diaginertia="0.000381765 0.000369601 2.96432e-05" />
+                  <joint name="right_pinky_q1" pos="0 0 0" axis="0 0 -1" range="0 1.0"
+                  />
+                  <geom name="right_pinky_mesh_1" pos="0.0384727 0.0032577 0"
+                    quat="0.999108 0 0 0.0422244" type="mesh" contype="0" conaffinity="0" group="1"
+                    density="0" mesh="right_idx-F1" />
+                  <geom size="0.0085" pos="0.036 -0.00175 0" />
+                  <geom size="0.014 0.006 0.008" pos="0.019 -0.0045 0" quat="0.999108 0 0 0.0422374"
+                    type="box" />
+                  <geom size="0.01 0.005 0.008" pos="0.018 0.006 0" quat="0.999108 0 0 0.0422374"
+                    type="box" />
+                  <geom size="0.006 0.006 0.001" pos="-0.001 0 0.007" quat="0.999108 0 0 0.0422374"
+                    type="box" />
+                  <geom size="0.006 0.006 0.001" pos="-0.001 0 -0.007" quat="0.999108 0 0 0.0422374"
+                    type="box" />
+                  <geom name="collision_hand_right_pinky_1" type="sphere" size="0.01"
+                    pos="0.019 -0.0045 0" contype="0" conaffinity="0" group="3"
+                    density="0" rgba="0 1 0 1" />
+                  <body name="right_pinky_L2" pos="0.0384727 0.0032577 0"
+                    quat="0.999108 0 0 0.0422244">
+                    <inertial pos="0.0133682 -0.00875392 -2.886e-05"
+                      quat="-0.161363 0.673074 0.216775 0.688434" mass="0.00645"
+                      diaginertia="0.000264645 0.000263553 1.71391e-05" />
+                    <joint name="right_pinky_q2" pos="0 0 0" axis="0 0 -1" range="0 1.0"
+                    />
+                    <geom name="right_pinky_mesh_2" pos="0.0091241 0 0" quat="1 0 0 0" type="mesh"
+                      contype="0" conaffinity="0" group="1" density="0" mesh="right_idx-F2" />
+                    <geom type="mesh" mesh="right_idx-F2_C" />
+                    <geom size="0.007" pos="0.03 -0.016 0" />
+                    <geom name="collision_hand_right_pinky_0" type="capsule" size="0.007"
+                      fromto="0 0 0 0.03 -0.016 0" contype="0" conaffinity="0" group="3"
+                      density="0" rgba="0 1 0 1" />
+                    <site name="right_pinky_tip" pos="0.03 -0.016 0" />
+                    <site name="track_hand_right_pinky_tip" pos="0.03 -0.016 0" />
+                    <site name="trace_hand_right_pinky_tip" pos="0.03 -0.016 0" />
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <!-- Global position and rotation joints -->
+    <position name="L_forearm_tx_position" joint="L_forearm_tx_link_joint" kp="1000" />
+    <position name="L_forearm_ty_position" joint="L_forearm_ty_link_joint" kp="1000" />
+    <position name="L_forearm_tz_position" joint="L_forearm_tz_link_joint" kp="1000" />
+    <position name="L_forearm_roll_position" joint="L_forearm_roll_link_joint" kp="1000" />
+    <position name="L_forearm_pitch_position" joint="L_forearm_pitch_link_joint" kp="1000" />
+    <position name="L_forearm_yaw_position" joint="L_forearm_yaw_link_joint" kp="1000" />
+
+    <!-- Thumb joints -->
+    <position name="right_thumb_q1_position" joint="right_thumb_q1" />
+    <position name="right_thumb_q2_position" joint="right_thumb_q2" />
+
+    <!-- Index joints -->
+    <position name="right_index_q1_position" joint="right_index_q1" />
+    <position name="right_index_q2_position" joint="right_index_q2" />
+
+    <!-- Middle joints -->
+    <position name="right_middle_q1_position" joint="right_middle_q1" />
+    <position name="right_middle_q2_position" joint="right_middle_q2" />
+
+    <!-- Ring joints -->
+    <position name="right_ring_q1_position" joint="right_ring_q1" />
+    <position name="right_ring_q2_position" joint="right_ring_q2" />
+
+    <!-- Pinky joints -->
+    <position name="right_pinky_q1_position" joint="right_pinky_q1" />
+    <position name="right_pinky_q2_position" joint="right_pinky_q2" />
+
+  </actuator>
+</mujoco>

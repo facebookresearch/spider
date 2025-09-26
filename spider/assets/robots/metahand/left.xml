@@ -1,0 +1,311 @@
+<mujoco model="metahand_left">
+  <compiler angle="radian" meshdir="assets" autolimits="true" />
+
+  <option timestep="0.01"
+    iterations="10" ls_iterations="50">
+    <flag eulerdamp="disable" />
+  </option>
+
+  <default>
+    <default class="mimic_left">
+      <site size="0.015" type="sphere" rgba="1 0 0 1" group="3" />
+    </default>
+    <default class="metahand_left">
+      <joint axis="0 1 0" armature="1.0" damping="0.0" />
+      <!-- <joint axis="0 1 0" damping="0.2" armature="0.00149376"
+        actuatorfrcrange="-0.2196 0.2196" frictionloss="0.02" /> -->
+      <position kp="300" dampratio="1.0" />
+      <geom density="800" />
+
+      <default class="left_visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2" material="left_black" />
+        <default class="left_palm_visual">
+          <geom mesh="left_base_link" />
+        </default>
+        <default class="left_base_visual">
+          <geom mesh="left_link_0.0" />
+        </default>
+        <default class="left_proximal_visual">
+          <geom mesh="left_link_1.0" />
+        </default>
+        <default class="left_medial_visual">
+          <geom mesh="left_link_2.0" />
+        </default>
+        <default class="left_distal_visual">
+          <geom mesh="left_link_3.0" />
+        </default>
+        <default class="left_fingertip_visual">
+          <geom pos="0 0 0.0515" material="left_white" mesh="left_link_3.0_tip" />
+        </default>
+        <default class="left_thumbtip_visual">
+          <geom pos="0 0 0.0671" material="left_white" mesh="left_link_15.0_tip" />
+        </default>
+      </default>
+
+      <default class="left_collision">
+        <!-- disable all collisions, use explicit collision pairs -->
+        <geom group="3" type="box" mass="0" condim="1" contype="0" conaffinity="0" />
+        <default class="left_palm_collision">
+          <geom size="0.0204 0.0565 0.0475" pos="-0.0093 0 -0.0475" />
+        </default>
+        <default class="left_base_collision">
+          <geom size="0.0098 0.01375 0.0082" pos="0 0 0.0082" />
+          <default class="left_thumb_base_collision">
+            <geom size="0.0179 0.017 0.02275" pos="-0.0179 0.009 0.0145" />
+          </default>
+        </default>
+        <default class="left_proximal_collision">
+          <geom size="0.0098 0.01375 0.027" pos="0 0 0.027" />
+          <default class="left_thumb_proximal_collision">
+            <geom size="0.0098 0.01375 0.00885" pos="0 0 0.00885" />
+          </default>
+        </default>
+        <default class="left_medial_collision">
+          <geom size="0.0098 0.01375 0.0192" pos="0 0 0.0192" />
+          <default class="left_thumb_medial_collision">
+            <geom size="0.0098 0.01375 0.0257" pos="0 0 0.0257" />
+          </default>
+        </default>
+        <default class="left_distal_collision">
+          <geom size="0.0098 0.01375 0.008" pos="0 0 0.008" />
+          <default class="left_thumb_distal_collision">
+            <geom size="0.0098 0.01375 0.0157" pos="0 0 0.0157" />
+          </default>
+        </default>
+        <default class="left_fingertip_collision">
+          <!-- <geom type="sphere" size="0.01235" pos="0 0 0.0515" /> -->
+          <geom type="capsule" size="0.01235" fromto="0 0 0 0 0 0.0515" />
+          <default class="left_thumbtip_collision">
+            <!-- <geom type="sphere" size="0.01235" pos="0 0 0.0671" /> -->
+            <geom type="capsule" size="0.01235" fromto="0 0 0 0 0 0.0671" />
+          </default>
+        </default>
+      </default>
+
+      <default class="left_base_slide">
+        <joint type="slide" axis="0 1 0" range="-3.0 3.0" armature="1.0" damping="0.0"
+          actuatorfrcrange="-1000.0 1000.0" />
+        <position ctrlrange="-3.0 3.0" kp="1000" dampratio="1.0" />
+      </default>
+      <default class="left_base_hinge">
+        <joint axis="0 0 1" range="-6.28 6.28" armature="1.0" damping="0.0"
+          actuatorfrcrange="-1000.0 1000.0" />
+        <position ctrlrange="-6.28 6.28" kp="1000" dampratio="1.0" />
+      </default>
+      <default class="left_base">
+        <joint axis="0 0 1" range="-0.47 0.47" />
+        <position ctrlrange="-0.47 0.47" />
+      </default>
+      <default class="left_proximal">
+        <joint range="0.196 1.61" />
+        <position ctrlrange="0.196 1.61" />
+      </default>
+      <default class="left_medial">
+        <joint range="0.174 1.709" />
+        <position ctrlrange="0.174 1.709" />
+      </default>
+      <default class="left_distal">
+        <joint range="0.227 1.618" />
+        <position ctrlrange="0.227 1.618" />
+      </default>
+      <default class="left_thumb_base">
+        <joint axis="1 0 0" range="0.263 1.396" />
+        <position ctrlrange="0.263 1.396" />
+      </default>
+      <default class="left_thumb_proximal">
+        <joint axis="0 0 1" range="0.105 1.163" />
+        <position ctrlrange="0.105 1.163" />
+      </default>
+      <default class="left_thumb_medial">
+        <joint range="0.189 1.644" />
+        <position ctrlrange="0.189 1.644" />
+      </default>
+      <default class="left_thumb_distal">
+        <joint range="0.162 1.719" />
+        <position ctrlrange="0.162 1.719" />
+      </default>
+    </default>
+  </default>
+
+  <asset>
+    <material name="left_black" rgba="0.2 0.2 0.2 1" />
+    <material name="left_white" rgba="0.9 0.9 0.9 1" />
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512"
+      height="3072" />
+    <texture type="2d" name="left_groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4"
+      rgb2="0.1 0.2 0.3"
+      markrgb="0.8 0.8 0.8" width="300" height="300" />
+    <material name="left_groundplane" texture="left_groundplane" texuniform="true"
+      texrepeat="5 5"
+      reflectance="0.2" />
+
+    <mesh name="left_base_link" file="base_link_left.stl" />
+    <mesh name="left_link_0.0" file="link_0.0.stl" />
+    <mesh name="left_link_1.0" file="link_1.0.stl" />
+    <mesh name="left_link_2.0" file="link_2.0.stl" />
+    <mesh name="left_link_3.0" file="link_3.0.stl" />
+    <mesh name="left_link_3.0_tip" file="link_3.0_tip.stl" />
+    <mesh name="left_link_12.0_left" file="link_12.0_left.stl" />
+    <mesh name="left_link_13.0" file="link_13.0.stl" />
+    <mesh name="left_link_14.0" file="link_14.0.stl" />
+    <mesh name="left_link_15.0" file="link_15.0.stl" />
+    <mesh name="left_link_15.0_tip" file="link_15.0_tip.stl" />
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 3.5" dir="0 0 -1" directional="false" />
+    <body name="left_palm" quat="0 0 1 -1" childclass="metahand_left" gravcomp="1">
+      <!-- <inertial mass="0.4154" pos="0 0 0.0475" diaginertia="1e-4 1e-4 1e-4"/> -->
+      <camera name="left_track" pos="0.868 -0.348 -0.175"
+        xyaxes="0.037 0.999 -0.000 0.011 -0.000 1.000" />
+      <site name="left_palm" pos="0 0 0" quat="1 0 0 0" class="mimic_left" type="box"
+        size="0.01 0.02 0.03" />
+      <joint name="left_pos_x" axis="1 0 0" class="left_base_slide" />
+      <joint name="left_pos_y" axis="0 1 0" class="left_base_slide" />
+      <joint name="left_pos_z" axis="0 0 1" class="left_base_slide" />
+      <joint name="left_rot_x" axis="1 0 0" class="left_base_hinge" />
+      <joint name="left_rot_y" axis="0 1 0" class="left_base_hinge" />
+      <joint name="left_rot_z" axis="0 0 1" class="left_base_hinge" />
+      <geom quat="1 -1 0 0" class="left_palm_visual" mesh="left_base_link" />
+      <geom name="collision_hand_left_palm_0" class="left_palm_collision" />
+      <!-- Ring finger -->
+      <body name="left_rf_base" pos="0 0.0435 -0.001542" quat="0.999048 -0.0436194 0 0">
+        <joint name="left_ring_base_joint" class="left_base" />
+        <geom class="left_base_visual" />
+
+        <body name="left_rf_proximal" pos="0 0 0.0164">
+          <joint name="left_ring_proximal_joint" class="left_proximal" />
+          <geom class="left_proximal_visual" />
+          <geom name="collision_hand_left_ring_2" class="left_proximal_collision" />
+          <body name="left_rf_medial" pos="0 0 0.054">
+            <joint name="left_ring_medial_joint" class="left_medial" />
+            <geom class="left_medial_visual" />
+            <geom name="collision_hand_left_ring_1" class="left_medial_collision" />
+            <body name="left_rf_distal" pos="0 0 0.0384">
+              <joint name="left_ring_distal_joint" class="left_distal" />
+              <geom class="left_distal_visual" />
+
+              <body name="left_rf_tip">
+                <site name="left_ring_tip" pos="0 0 0.0515" class="mimic_left" />
+                <site name="track_hand_left_ring_tip" pos="0 0 0.0515" class="mimic_left" />
+                <site name="trace_left_ring_tip" pos="0 0 0.0515" class="mimic_left" />
+                <geom class="left_fingertip_visual" />
+                <geom name="collision_hand_left_ring_0" class="left_fingertip_collision" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <!-- Middle finger -->
+      <body name="left_mf_base" pos="0 0 0.0007">
+        <joint name="left_middle_base_joint" class="left_base" />
+        <geom class="left_base_visual" />
+
+        <body name="left_mf_proximal" pos="0 0 0.0164">
+          <joint name="left_middle_proximal_joint" class="left_proximal" />
+          <geom class="left_proximal_visual" />
+          <geom name="collision_hand_left_middle_2" class="left_proximal_collision" />
+          <body name="left_mf_medial" pos="0 0 0.054">
+            <joint name="left_middle_medial_joint" class="left_medial" />
+            <geom class="left_medial_visual" />
+            <geom name="collision_hand_left_middle_1" class="left_medial_collision" />
+            <body name="left_mf_distal" pos="0 0 0.0384">
+              <joint name="left_middle_distal_joint" class="left_distal" />
+              <geom class="left_distal_visual" />
+
+              <body name="left_mf_tip">
+                <site name="left_middle_tip" pos="0 0 0.0515" class="mimic_left" />
+                <site name="track_hand_left_middle_tip" pos="0 0 0.0515" class="mimic_left" />
+                <site name="trace_left_middle_tip" pos="0 0 0.0515" class="mimic_left" />
+                <geom class="left_fingertip_visual" />
+                <geom name="collision_hand_left_middle_0" class="left_fingertip_collision" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <!-- First finger -->
+      <body name="left_ff_base" pos="0 -0.0435 -0.001542" quat="0.999048 0.0436194 0 0">
+        <joint name="left_index_base_joint" class="left_base" />
+        <geom class="left_base_visual" />
+
+        <body name="left_ff_proximal" pos="0 0 0.0164">
+          <joint name="left_index_proximal_joint" class="left_proximal" />
+          <geom class="left_proximal_visual" />
+          <geom name="collision_hand_left_index_2" class="left_proximal_collision" />
+          <body name="left_ff_medial" pos="0 0 0.054">
+            <joint name="left_index_medial_joint" class="left_medial" />
+            <geom class="left_medial_visual" />
+            <geom name="collision_hand_left_index_1" class="left_medial_collision" />
+            <body name="left_ff_distal" pos="0 0 0.0384">
+              <joint name="left_index_distal_joint" class="left_distal" />
+              <geom class="left_distal_visual" />
+
+              <body name="left_ff_tip">
+                <site name="left_index_tip" pos="0 0 0.0515" class="mimic_left" />
+                <site name="track_hand_left_index_tip" pos="0 0 0.0515" class="mimic_left" />
+                <site name="trace_left_index_tip" pos="0 0 0.0515" class="mimic_left" />
+                <geom class="left_fingertip_visual" />
+                <geom name="collision_hand_left_index_0" class="left_fingertip_collision" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <!-- Thumb -->
+      <body name="left_th_base" pos="-0.0182 -0.019333 -0.045987"
+        quat="0.477714 0.521334 -0.521334 0.477714">
+        <joint name="left_thumb_base_joint" class="left_thumb_base" />
+        <geom quat="0 1 0 0" class="left_visual" mesh="left_link_12.0_left" />
+
+        <body name="left_th_proximal" pos="-0.027 -0.005 0.0399">
+          <joint name="left_thumb_proximal_joint" class="left_thumb_proximal" />
+          <geom class="left_visual" mesh="left_link_13.0" />
+
+          <body name="left_th_medial" pos="0 0 0.0177">
+            <joint name="left_thumb_medial_joint" class="left_thumb_medial" />
+            <geom class="left_visual" mesh="left_link_14.0" />
+            <geom name="collision_hand_left_thumb_2" class="left_thumb_medial_collision" />
+            <body name="left_th_distal" pos="0 0 0.0514">
+              <joint name="left_thumb_distal_joint" class="left_thumb_distal" />
+              <geom class="left_visual" mesh="left_link_15.0" />
+              <geom name="collision_hand_left_thumb_1" class="left_thumb_distal_collision" />
+              <body name="left_th_tip">
+                <site name="left_thumb_tip" pos="0 0 0.0671" class="mimic_left" />
+                <site name="track_hand_left_thumb_tip" pos="0 0 0.0671" class="mimic_left" />
+                <site name="trace_left_thumb_tip" pos="0 0 0.0671" class="mimic_left" />
+                <geom class="left_thumbtip_visual" />
+                <geom name="collision_hand_left_thumb_0" class="left_thumbtip_collision" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <position name="left_pos_x" joint="left_pos_x" class="left_base_slide" />
+    <position name="left_pos_y" joint="left_pos_y" class="left_base_slide" />
+    <position name="left_pos_z" joint="left_pos_z" class="left_base_slide" />
+    <position name="left_rot_x" joint="left_rot_x" class="left_base_hinge" />
+    <position name="left_rot_y" joint="left_rot_y" class="left_base_hinge" />
+    <position name="left_rot_z" joint="left_rot_z" class="left_base_hinge" />
+    <position name="left_rfa0" joint="left_ring_base_joint" class="left_base" />
+    <position name="left_rfa1" joint="left_ring_proximal_joint" class="left_proximal" />
+    <position name="left_rfa2" joint="left_ring_medial_joint" class="left_medial" />
+    <position name="left_rfa3" joint="left_ring_distal_joint" class="left_distal" />
+    <position name="left_mfa0" joint="left_middle_base_joint" class="left_base" />
+    <position name="left_mfa1" joint="left_middle_proximal_joint" class="left_proximal" />
+    <position name="left_mfa2" joint="left_middle_medial_joint" class="left_medial" />
+    <position name="left_mfa3" joint="left_middle_distal_joint" class="left_distal" />
+    <position name="left_ffa0" joint="left_index_base_joint" class="left_base" />
+    <position name="left_ffa1" joint="left_index_proximal_joint" class="left_proximal" />
+    <position name="left_ffa2" joint="left_index_medial_joint" class="left_medial" />
+    <position name="left_ffa3" joint="left_index_distal_joint" class="left_distal" />
+    <position name="left_tha0" joint="left_thumb_base_joint" class="left_thumb_base" />
+    <position name="left_tha1" joint="left_thumb_proximal_joint" class="left_thumb_proximal" />
+    <position name="left_tha2" joint="left_thumb_medial_joint" class="left_thumb_medial" />
+    <position name="left_tha3" joint="left_thumb_distal_joint" class="left_thumb_distal" />
+  </actuator>
+</mujoco>
