@@ -18,8 +18,8 @@ import matplotlib.pyplot as plt
 from contextlib import contextmanager
 import json
 
-import retarget
-from retarget.io import get_processed_data_dir
+import spider
+from spider.io import get_processed_data_dir
 
 
 def main(
@@ -83,7 +83,7 @@ def main(
     loguru.logger.info(f"Loaded qpos from {qpos_path}")
 
     # visualize the data
-    mj_spec = mujoco.MjSpec.from_file(f"{retarget.ROOT}/assets/mano/contact_scene.xml")
+    mj_spec = mujoco.MjSpec.from_file(f"{spider.ROOT}/assets/mano/contact_scene.xml")
 
     # add right object to body "right_object"
     right_object_handle = mj_spec.worldbody.add_body(

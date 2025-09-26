@@ -25,7 +25,7 @@ import tyro
 import loguru
 from scipy import signal
 
-from retarget.io import get_processed_data_dir
+from spider.io import get_processed_data_dir
 
 
 def add_mocap_bodies(
@@ -741,8 +741,8 @@ def main(
             return signal.filtfilt(b, a, signal_data)
 
         # Apply low pass filter
-        for i in range(qpos_list.shape[1]):
-            qpos_list[:, i] = low_pass_filter(qpos_list[:, i])
+        # for i in range(qpos_list.shape[1]):
+        #     qpos_list[:, i] = low_pass_filter(qpos_list[:, i])
 
         H = qpos_list.shape[0]
         # get qvel
