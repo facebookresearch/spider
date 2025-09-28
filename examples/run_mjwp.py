@@ -1,5 +1,4 @@
-"""
-A standalone script to run DIAL MPC with Mujoco + Warp
+"""A standalone script to run DIAL MPC with Mujoco + Warp
 
 Up to now, domain randomization is not supported. Will add it later.
 
@@ -8,44 +7,44 @@ Date: 2025-08-11
 """
 
 from __future__ import annotations
+
 import time
+
+import imageio
+import loguru
+import mujoco
 import numpy as np
 import torch
 import tyro
-import mujoco
-import imageio
-import loguru
 
 from spider.config import Config, process_config
-from spider.optimizers.sampling import (
-    make_rollout_fn,
-    make_optimize_once_fn,
-    make_optimize_fn,
-)
+from spider.interp import get_slice
 from spider.io import load_data
-from spider.viewers import update_viewer, setup_viewer, setup_renderer, render_image
+from spider.optimizers.sampling import (
+    make_optimize_fn,
+    make_optimize_once_fn,
+    make_rollout_fn,
+)
 from spider.simulators.mjwp import (
-    setup_env,
-    step_env,
-    get_reward,
-    get_terminal_reward,
     get_qpos,
     get_qvel,
-    save_state,
-    load_state,
+    get_reward,
+    get_terminal_reward,
     get_trace,
-    save_env_params,
     load_env_params,
-    sync_env,
+    load_state,
+    save_env_params,
+    save_state,
+    setup_env,
     setup_mj_model,  # mjwp specific
+    step_env,
+    sync_env,
 )
-from spider.interp import get_slice
+from spider.viewers import render_image, setup_renderer, setup_viewer, update_viewer
 
 
 def main(config: Config):
-    """
-    Run the DIAL MPC using MuJoCo Warp backend
-    """
+    """Run the DIAL MPC using MuJoCo Warp backend"""
     # process config, set defaults and derived fields
     config = process_config(config)
 
@@ -85,12 +84,24 @@ def main(config: Config):
                     hand_trace_site_ids.append(sid)
     config.trace_site_ids = object_trace_site_ids + hand_trace_site_ids
 
-    # setup env params (empty)
+    # setup env params
     env_params_list = []
+    if config.num_dr == 0:
+        xy_offset_list = [0.0]
+        pair_margin_list = [0.0]
+    else:
+        xy_offset_list = np.linspace(
+            config.xy_offset_range[0], config.xy_offset_range[1], config.num_dr
+        )
+        pair_margin_list = np.linspace(
+            config.pair_margin_range[0], config.pair_margin_range[1], config.num_dr
+        )
     for i in range(config.max_num_iterations):
         env_params = []
         for j in range(config.num_dr):
-            env_params.append({})
+            env_params.append(
+                {"xy_offset": xy_offset_list[j], "pair_margin": pair_margin_list[j]}
+            )
         env_params_list.append(env_params)
     config.env_params_list = env_params_list
 
@@ -152,7 +163,7 @@ def main(config: Config):
                 step_info["qvel"].append(mj_data.qvel.copy())
                 step_info["time"].append(mj_data.time)
                 step_info["ctrl"].append(mj_data.ctrl.copy())
-            for k in step_info.keys():
+            for k in step_info:
                 step_info[k] = np.stack(step_info[k], axis=0)
             infos.update(step_info)
             # sync env state
@@ -162,8 +173,7 @@ def main(config: Config):
             sim_step = int(np.round(mj_data.time / config.sim_dt))
             prev_ctrl = ctrls[config.ctrl_steps :]
             new_ctrl = ctrl_ref[
-                sim_step
-                + prev_ctrl.shape[0] : sim_step
+                sim_step + prev_ctrl.shape[0] : sim_step
                 + prev_ctrl.shape[0]
                 + config.ctrl_steps
             ]

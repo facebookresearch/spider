@@ -1,17 +1,18 @@
-"""
-Define the configuration for the optimizer.
+"""Define the configuration for the optimizer.
 
 Author: Chaoyi Pan
 Date: 2025-08-10
 """
 
 import json
-import loguru
 import os
-import numpy as np
 from dataclasses import dataclass, field
-import torch
+
+import loguru
 import mujoco
+import numpy as np
+import torch
+
 import spider
 from spider.io import get_processed_data_dir
 
@@ -22,14 +23,14 @@ class Config:
     robot_type: str = "allegro"  # "inspire", "allegro", "g1"
     hand_type: str = "bimanual"  # "left", "right", "bimanual", "CMU"
     task: str = "pick_spoon_bowl"
-    
+
     # === DATASET CONFIGURATION ===
     dataset_dir: str = f"{spider.ROOT}/../example_datasets"
     dataset_name: str = "oakink"
     data_id: int = 0
     model_path: str = ""
     data_path: str = ""
-    
+
     # === SIMULATOR CONFIGURATION ===
     simulator: str = "isaac"  # "isaac" | "mujoco" | "mjwp" | "mjwp_cons" | "mjwp_eq" | "mjwp_cons_eq" | "kinematic"
     device: str = "cuda:0"
@@ -43,10 +44,18 @@ class Config:
     max_sim_steps: int = -1  # maximum simulation steps (-1 for unlimited)
     # Simulation constraints
     nconmax_per_env: int = 80  # max contacts per environment
-    njmax_per_env: int = 300   # max joints per environment
-    num_dyn: int = 1  # number of environments for annealing, used for virtual contact constraint
-    num_dr: int = 1  # number of domain randomization groups, used for domain randomization
-    
+    njmax_per_env: int = 300  # max joints per environment
+    # Simulation annealing
+    num_dyn: int = (
+        1  # number of environments for annealing, used for virtual contact constraint
+    )
+    # Domain randomization
+    num_dr: int = (
+        1  # number of domain randomization groups, used for domain randomization
+    )
+    pair_margin_range: tuple[float, float] = (-0.01, 0.01)
+    xy_offset_range: tuple[float, float] = (-0.005, 0.005)
+
     # === OPTIMIZER CONFIGURATION ===
     # Sampling parameters
     num_samples: int = 1024
@@ -71,20 +80,20 @@ class Config:
     rot_rew_scale: float = 0.1
     vel_rew_scale: float = 0.0001
     terminal_rew_scale: float = 1.0
-    
+
     # === VISUALIZATION CONFIGURATION ===
     show_viewer: bool = True
     viewer: str = "mujoco"  # "mujoco" | "rerun" | "isaac"
     rerun_spawn: bool = False
     save_video: bool = True
     save_info: bool = True
-    
+
     # === TRACE RECORDING ===
     trace_dt: float = 1 / 50.0
     num_trace_uniform_samples: int = 4
     num_trace_topk_samples: int = 2
     trace_site_ids: list = field(default_factory=list)
-    
+
     # === AUTOMATICALLY SET PROPERTIES ===
     # Computed timesteps
     horizon_steps: int = -1
@@ -93,9 +102,10 @@ class Config:
     ctrl_steps: int = -1
     # Model dimensions
     nq_obj: int = -1  # object DOF
-    nq: int = -1      # total position DOF
-    nv: int = -1      # total velocity DOF  
-    nu: int = -1      # total control DOF
+    nq: int = -1  # total position DOF
+    nv: int = -1  # total velocity DOF
+    nu: int = -1  # total control DOF
+    npair: int = -1  # total pair DOF
     # Computed tensors
     noise_scale: torch.Tensor = torch.ones(1)
     beta_traj: float = -1.0
@@ -106,8 +116,7 @@ class Config:
 
 
 def get_noise_scale(config: Config) -> torch.Tensor:
-    """
-    Get the noise scale for sampling.
+    """Get the noise scale for sampling.
 
     Args:
         config: Config
@@ -121,9 +130,7 @@ def get_noise_scale(config: Config) -> torch.Tensor:
         steps=int(round(config.horizon / config.knot_dt)),
         device=config.device,
         base=10,
-    )[
-        None, :, None
-    ]  # Shape: (1, num_knot_steps, 1)
+    )[None, :, None]  # Shape: (1, num_knot_steps, 1)
     noise_scale = noise_scale.repeat(1, 1, config.nu)
     if config.hand_type in ["bimanual", "right", "left"]:
         noise_scale[:, :, :3] *= config.pos_noise_scale
@@ -175,9 +182,7 @@ def compute_noise_schedule(config: Config) -> Config:
 
 
 def process_config(config: Config):
-    """
-    Process the configuration to fill in the missing fields.
-    """
+    """Process the configuration to fill in the missing fields."""
     config = compute_steps(config)
     trace_steps_tmp = int(np.round(config.trace_dt / config.sim_dt))
     assert np.isclose(
@@ -214,6 +219,7 @@ def process_config(config: Config):
     config.nq = model.nq
     config.nv = model.nv
     config.nu = model.nu
+    config.npair = model.npair
 
     # get noise scale
     config = compute_noise_schedule(config)
@@ -224,7 +230,7 @@ def process_config(config: Config):
 
     # read task info
     task_info_path = f"{processed_dir_robot}/../task_info.json"
-    with open(task_info_path, "r", encoding="utf-8") as f:
+    with open(task_info_path, encoding="utf-8") as f:
         task_info = json.load(f)
     if "ref_dt" in task_info:
         config.ref_dt = task_info["ref_dt"]

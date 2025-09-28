@@ -1,5 +1,4 @@
-"""
-Define functions to get noise schedule for the optimizer.
+"""Define functions to get noise schedule for the optimizer.
 
 Convention:
 - All info should be numpy array.
@@ -9,21 +8,20 @@ Date: 2025-08-10
 """
 
 from __future__ import annotations
-from typing import Optional
-import torch
-import numpy as np
+
 import loguru
+import numpy as np
+import torch
 import torch.nn.functional as F
 
-from spider.interp import interp
 from spider.config import Config
+from spider.interp import interp
 
 
 def sample_ctrls(
-    config, ctrls: torch.Tensor, sample_params: Optional[dict] = None
+    config, ctrls: torch.Tensor, sample_params: dict | None = None
 ) -> torch.Tensor:
-    """
-    Sample control actions from the control signal.
+    """Sample control actions from the control signal.
 
     Args:
         config: Config
@@ -65,14 +63,14 @@ def make_rollout_fn(
         ref_slice: tuple[torch.Tensor, ...],
         env_param: dict,
     ) -> torch.Tensor:
-        """
-        Rollout the control actions to get reward
+        """Rollout the control actions to get reward
 
         Args:
             config: Config
             env: Environment
             ctrls: Control actions, shape (horizon_steps, nu)
             ref_slice: Reference slice, shape (nq, nv, nu, ncon, ncon_pos)
+
         Returns:
             Reward, shape (num_samples,)
             Info: dict, including trace (N, H, n_trace, 3)
@@ -81,10 +79,10 @@ def make_rollout_fn(
         init_state = save_state(env)
 
         # save initial env params (active group pointer)
-        init_env_param = save_env_params(env)
+        init_env_param = save_env_params(config, env)
 
         # select rollout graph/data pointers for this rollout
-        env = load_env_params(env, env_param)
+        env = load_env_params(config, env, env_param)
 
         # rollout to get reward
         N, H = ctrls.shape[:2]
@@ -110,7 +108,7 @@ def make_rollout_fn(
         env = load_state(env, init_state)
 
         # reset env params
-        env = load_env_params(env, init_env_param)
+        env = load_env_params(config, env, init_env_param)
 
         # get info
         trace_list = torch.stack(trace_list, dim=1)
@@ -132,10 +130,9 @@ def make_optimize_once_fn(
         ctrls: torch.Tensor,
         ref_slice: tuple[torch.Tensor, ...],
         env_params: list[dict] = [{}],
-        sample_params: Optional[dict] = None,
+        sample_params: dict | None = None,
     ) -> torch.Tensor:
-        """
-        Single step optimization of the policy parameters using DIAL MPC, no annealing is involved
+        """Single step optimization of the policy parameters using DIAL MPC, no annealing is involved
 
         Args:
             config: Config
@@ -242,9 +239,7 @@ def make_optimize_fn(
         ctrls: torch.Tensor,
         ref_slice: tuple[torch.Tensor, ...],
     ):
-        """
-        Full optimization loop at certain time step. Mainly involves simulation parameter annealing and sampling parameter annealing
-        """
+        """Full optimization loop at certain time step. Mainly involves simulation parameter annealing and sampling parameter annealing"""
         infos = []
 
         # schedule sampling parameters

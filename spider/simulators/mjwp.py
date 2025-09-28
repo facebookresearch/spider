@@ -1,5 +1,4 @@
-"""
-Simulator for sampling with MuJoCo Warp (mjwarp).
+"""Simulator for sampling with MuJoCo Warp (mjwarp).
 
 This module provides a minimal MJWP backend that matches the sampling API used by
 the generic optimizer pipeline. It intentionally keeps the implementation simple
@@ -7,17 +6,20 @@ and robust (no DR groups here; see legacy script for advanced features).
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass
+
+import mujoco
+import mujoco_warp as mjwarp
 import numpy as np
 import torch
-import mujoco
 import warp as wp
-import mujoco_warp as mjwarp
-import loguru
+
+# NOTE: this is a hacky solution to make sure domain randomization works for contact margin. Otherwise, it will create a surrogate memory for all worlds and we cannot override each individual world's contact parameters.
+mjwarp._src.io.MAX_WORLDS = 1024
 
 from spider.config import Config
 from spider.math import quat_sub
-
 
 # Initialize Warp once per process
 try:
@@ -32,6 +34,7 @@ class MJWPEnv:
     model_cpu: mujoco.MjModel
     data_cpu: mujoco.MjData
     # Unified data sink always reflecting last step's state
+    model_wp: mjwarp.Model
     data_wp: mjwarp.Data
     data_wp_prev: mjwarp.Data
     graph: wp.ScopedCapture.Graph
@@ -43,9 +46,7 @@ class MJWPEnv:
 def _compile_step(
     model_wp: mjwarp.Model, data_wp: mjwarp.Data
 ) -> wp.ScopedCapture.Graph:
-    """
-    Warm up and capture a CUDA graph that runs a single mjwarp.step.
-    """
+    """Warm up and capture a CUDA graph that runs a single mjwarp.step."""
 
     def _step_once():
         mjwarp.step(model_wp, data_wp)
@@ -80,8 +81,7 @@ def setup_mj_model(config: Config) -> mujoco.MjModel:
 
 
 def setup_env(config: Config, ref_data: tuple[torch.Tensor, ...]) -> MJWPEnv:
-    """
-    Setup and reset the environment backed by MJWP.
+    """Setup and reset the environment backed by MJWP.
     Returns an MJWPEnv with captured graph.
     """
     qpos_ref, qvel_ref, ctrl_ref, contact_ref, contact_pos_ref = ref_data
@@ -104,6 +104,15 @@ def setup_env(config: Config, ref_data: tuple[torch.Tensor, ...]) -> MJWPEnv:
     dev = str(config.device)
     with wp.ScopedDevice(dev):
         default_model_wp = mjwarp.put_model(model_cpu)
+        # pair_margin_override_np = (
+        #     np.zeros((int(config.num_samples), model_cpu.npair)).astype(np.float32)
+        #     + 0.01
+        # )
+        # pair_margin_override_wp = wp.from_numpy(
+        #     pair_margin_override_np, dtype=wp.float32, device=dev
+        # )
+        # default_model_wp.pair_margin = pair_margin_override_wp
+
         default_data_wp = mjwarp.put_data(
             model_cpu,
             data_cpu,
@@ -124,6 +133,7 @@ def setup_env(config: Config, ref_data: tuple[torch.Tensor, ...]) -> MJWPEnv:
     return MJWPEnv(
         model_cpu=model_cpu,
         data_cpu=data_cpu,
+        model_wp=default_model_wp,
         data_wp=default_data_wp,
         data_wp_prev=data_wp_prev,
         graph=default_graph,
@@ -164,8 +174,7 @@ def _weight_diff_qpos(config: Config) -> torch.Tensor:
 def _diff_qpos(
     config: Config, qpos_sim: torch.Tensor, qpos_ref: torch.Tensor
 ) -> torch.Tensor:
-    """
-    Compute the difference between qpos_sim and qpos_ref
+    """Compute the difference between qpos_sim and qpos_ref
     TODO: replace with mujoco built-in function, not sure how to call warp internal function yet.
     """
     batch_size = qpos_sim.shape[0]
@@ -201,8 +210,7 @@ def get_reward(
     env: MJWPEnv,
     ref: tuple[torch.Tensor, ...],
 ) -> torch.Tensor:
-    """
-    Non-terminal step reward for MJWP batched worlds.
+    """Non-terminal step reward for MJWP batched worlds.
     ref is a tuple: (qpos_ref, qvel_ref, ctrl_ref, contact_ref, contact_pos_ref)
     Returns (N,)
     """
@@ -225,9 +233,7 @@ def get_terminal_reward(
     env: MJWPEnv,
     ref_slice: tuple[torch.Tensor, ...],
 ) -> torch.Tensor:
-    """
-    Terminal reward focusing on object tracking.
-    """
+    """Terminal reward focusing on object tracking."""
     # return config.terminal_rew_scale * get_reward(config, env, ref_slice)
     qpos_ref, qvel_ref, ctrl_ref, contact_ref, _ = ref_slice
     qpos_sim = wp.to_torch(env.data_wp.qpos)
@@ -275,8 +281,7 @@ def get_qvel(config: Config, env: MJWPEnv) -> torch.Tensor:
 
 
 def get_trace(config: Config, env: MJWPEnv) -> torch.Tensor:
-    """
-    Return per-world trace points used for visualization. Minimal default returns
+    """Return per-world trace points used for visualization. Minimal default returns
     an empty trace set of shape (N, 0, 3) when not configured.
     """
     site_xpos = wp.to_torch(env.data_wp.site_xpos)  # (N, nsite, 3)
@@ -284,8 +289,7 @@ def get_trace(config: Config, env: MJWPEnv) -> torch.Tensor:
 
 
 def save_state(env: MJWPEnv):
-    """
-    Clone the essential set of Warp arrays to restore later.
+    """Clone the essential set of Warp arrays to restore later.
     Includes core state variables and key derived quantities.
     """
     _copy_state(env.data_wp, env.data_wp_prev)
@@ -363,9 +367,7 @@ def load_state(env: MJWPEnv, state):
 
 
 def step_env(config: Config, env: MJWPEnv, ctrl_mujoco: torch.Tensor):
-    """
-    Step all worlds with provided MuJoCo-format controls of shape (N, nu).
-    """
+    """Step all worlds with provided MuJoCo-format controls of shape (N, nu)."""
     if ctrl_mujoco.dim() == 1:
         ctrl_mujoco = ctrl_mujoco.unsqueeze(0).repeat(env.num_worlds, 1)
     # Ensure we operate on the correct CUDA context/device
@@ -375,30 +377,68 @@ def step_env(config: Config, env: MJWPEnv, ctrl_mujoco: torch.Tensor):
         wp.capture_launch(env.graph)
 
 
-def save_env_params(env: MJWPEnv):
-    """
-    Save the current simulation parameters.
-    """
+def save_env_params(config: Config, env: MJWPEnv):
+    """Save the current simulation parameters."""
     # Only record which group is active; parameters are embedded in separate models
-    return {}
+    # TODO: explicitly read pair_margin and xy_offset from env.data_wp
+    # currently we choose this solution since pair_margin has a huge virtual dimension,
+    # convert it to torch would lead to OOM
+    pair_margin = 0.0
+    xy_offset = 0.0
+    return {"pair_margin": pair_margin, "xy_offset": xy_offset}
 
 
-def load_env_params(env: MJWPEnv, env_param: dict):
-    """
-    Load the simulation parameters.
+def load_env_params(config: Config, env: MJWPEnv, env_param: dict):
+    """Load the simulation parameters.
 
     Parameters to be updated:
     - pair_margin
-    - pair_friction
-    - eq_solref
-    - eq_solimp
+    - xy_offset of the object
     """
+    # update model parameters (pair_margin)
+    if "pair_margin" in env_param:
+        pair_margin_single_np = np.full(
+            shape=(config.npair,), fill_value=env_param["pair_margin"], dtype=np.float32
+        )
+
+        # 2. Copy this small array to the GPU
+        pair_margin_override_wp = wp.from_numpy(
+            pair_margin_single_np, dtype=wp.float32, device=config.device
+        )
+
+        # 3. Apply the stride trick to broadcast it
+        # This makes Warp treat the single instance as if it were num_samples copies
+        # without allocating any new memory.
+        pair_margin_override_wp.strides = (0,) + pair_margin_override_wp.strides
+        pair_margin_override_wp.shape = (
+            config.num_samples,
+        ) + pair_margin_override_wp.shape
+        pair_margin_override_wp.ndim += 1
+        wp.copy(env.model_wp.pair_margin, pair_margin_override_wp)
+
+    # update object position (NOTE: currently, xy_offset is only one scalar, which means we only update in the diagonal direction)
+    if "xy_offset" in env_param:
+        qpos_override_th = wp.to_torch(env.data_wp.qpos)
+        # TODO: make object pos detection automatic
+        if config.hand_type == "bimanual":
+            qpos_override_th[:, -14:-12] = (
+                qpos_override_th[:, -14:-12] + env_param["xy_offset"]
+            )
+            qpos_override_th[:, -12:-10] = (
+                qpos_override_th[:, -12:-10] + env_param["xy_offset"]
+            )
+        elif config.hand_type in ["right", "left"]:
+            qpos_override_th[:, -7:-5] = (
+                qpos_override_th[:, -7:-5] + env_param["xy_offset"]
+            )
+
+        wp.copy(env.data_wp.qpos, wp.from_torch(qpos_override_th))
+
     return env
 
 
 def sync_env(config: Config, env: MJWPEnv, mj_data: mujoco.MjData):
-    """
-    broadcast the state from first env to all envs
+    """Broadcast the state from first env to all envs
 
     This function synchronizes states from the first environment to all environments.
     Uses safe copying with buffer size validation to avoid mismatches.
@@ -482,9 +522,7 @@ def sync_env(config: Config, env: MJWPEnv, mj_data: mujoco.MjData):
 
 
 def sync_env_mujoco(config: Config, env: MJWPEnv, mj_data: mujoco.MjData):
-    """
-    sync state from mj_data to env.data_wp
-    """
+    """Sync state from mj_data to env.data_wp"""
     # Define field mappings with their data and target shapes
     fields = [
         # Core state variables
@@ -650,8 +688,7 @@ def sync_env_mujoco(config: Config, env: MJWPEnv, mj_data: mujoco.MjData):
 
 
 def _copy_state(src: mjwarp.Data, dst: mjwarp.Data):
-    """
-    Copy the state from src to dst
+    """Copy the state from src to dst
 
     TODO: this function is a temporary solution for domain randomization. A better way should be defining a new warp kernel to update simulation parameter accordingly.
 
