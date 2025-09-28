@@ -53,8 +53,10 @@ class Config:
     num_dr: int = (
         1  # number of domain randomization groups, used for domain randomization
     )
-    pair_margin_range: tuple[float, float] = (-0.01, 0.01)
+    pair_margin_range: tuple[float, float] = (-0.005, 0.005)
     xy_offset_range: tuple[float, float] = (-0.005, 0.005)
+    perturb_force: float = 0.0
+    perturb_torque: float = 0.0
 
     # === OPTIMIZER CONFIGURATION ===
     # Sampling parameters
@@ -107,7 +109,7 @@ class Config:
     nu: int = -1  # total control DOF
     npair: int = -1  # total pair DOF
     # Computed tensors
-    noise_scale: torch.Tensor = torch.ones(1)
+    noise_scale: torch.Tensor = field(default_factory=lambda: torch.ones(1))
     beta_traj: float = -1.0
     # Runtime state
     env_params_list: list = field(default_factory=list)

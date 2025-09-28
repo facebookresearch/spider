@@ -1,5 +1,4 @@
-"""
-Run IK for the given hand type and mode.
+"""Run IK for the given hand type and mode.
 
 Input data format: npz file which contains qpos for key frames.
 
@@ -9,20 +8,17 @@ Author: Chaoyi Pan
 Date: 2025-07-06
 """
 
-from gc import enable
 import os
-from typing import List, Dict
-from cv2 import FILE_NODE_EMPTY
-from scipy.spatial.transform import Rotation as R
 from contextlib import contextmanager
-from loop_rate_limiters import RateLimiter
-import numpy as np
+
+import loguru
 import mujoco
 import mujoco.viewer
+import numpy as np
+import tyro
+from loop_rate_limiters import RateLimiter
 from mujoco import MjSpec
 from omegaconf import DictConfig, OmegaConf
-import tyro
-import loguru
 from scipy import signal
 
 from spider.io import get_processed_data_dir
@@ -30,13 +26,12 @@ from spider.io import get_processed_data_dir
 
 def add_mocap_bodies(
     mjspec: MjSpec,
-    sites_for_mimic: List[str],
-    mocap_bodies: List[str],
+    sites_for_mimic: list[str],
+    mocap_bodies: list[str],
     robot_conf: DictConfig = None,
     add_equality_constraint: bool = True,
 ):
-    """
-    Add mocap bodies to the model specification.
+    """Add mocap bodies to the model specification.
     Source: https://github.com/robfiras/loco-mujoco
 
     Args:
@@ -47,7 +42,6 @@ def add_mocap_bodies(
         add_equality_constraint (bool): Whether to add equality constraints between the sites and the mocap bodies.
 
     """
-
     if robot_conf is not None and robot_conf.optimization_params.disable_joint_limits:
         for j in mjspec.joints:
             j.limited = False
@@ -80,7 +74,7 @@ def add_mocap_bodies(
             )
 
     if add_equality_constraint:
-        for b1, b2 in zip(sites_for_mimic, mocap_bodies):
+        for b1, b2 in zip(sites_for_mimic, mocap_bodies, strict=False):
             if robot_conf is not None:
                 eq_type = getattr(
                     mujoco.mjtEq,
@@ -105,14 +99,14 @@ def add_mocap_bodies(
             if robot_conf is not None:
                 if hasattr(robot_conf.site_joint_matches[b1], "solref"):
                     test = len(robot_conf.site_joint_matches[b1].solref)
-                    assert (
-                        len(robot_conf.site_joint_matches[b1].solref) == 2
-                    ), "solref must be a list of length 2"
+                    assert len(robot_conf.site_joint_matches[b1].solref) == 2, (
+                        "solref must be a list of length 2"
+                    )
                     e.solref = robot_conf.site_joint_matches[b1].solref
                 if hasattr(robot_conf.site_joint_matches[b1], "solimp"):
-                    assert (
-                        len(robot_conf.site_joint_matches[b1].solimp) == 5
-                    ), "solimp must be a list of length 5"
+                    assert len(robot_conf.site_joint_matches[b1].solimp) == 5, (
+                        "solimp must be a list of length 5"
+                    )
                     e.solimp = robot_conf.site_joint_matches[b1].solimp
 
     return mjspec
@@ -168,7 +162,7 @@ def main(
     show_viewer: bool = True,
     save_video: bool = False,
     enable_collision: bool = True,
-    start_idx: int = 5,
+    start_idx: int = 0,
     end_idx: int = -1,
     sim_dt: float = 0.01,
     ref_dt: float = 0.02,
@@ -530,7 +524,9 @@ def main(
                         mj_data_ik.ctrl[:] = mj_data_ik.qpos[:-nq_obj].copy()
                         mujoco.mj_step(mj_model_ik, mj_data_ik)
                     # compute mocap diff
-                    for mocap_id, qpos_id in zip(mocap_id_list, qpos_id_list):
+                    for mocap_id, qpos_id in zip(
+                        mocap_id_list, qpos_id_list, strict=False
+                    ):
                         mocap_pos = mj_data_ik.mocap_pos[mocap_id]
                         mocap_quat = mj_data_ik.mocap_quat[mocap_id]
                         qpos_pos = qpos_ref[cnt, qpos_id, :3]
@@ -611,6 +607,7 @@ def main(
 
                                 # Use smooth transition with clipping
                                 ratio = np.clip(cnt / max(contact_frame, 1), 0.0, 1.0)
+                                ratio = 1.0 - np.cos(ratio * np.pi * 0.5)
                                 joint_pos = (
                                     ratio * current_joint_pos
                                     + (1 - ratio) * zero_joint_pos

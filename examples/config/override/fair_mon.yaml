@@ -1,0 +1,21 @@
+# @package _global_
+# Override configuration for fair_mon dataset
+dataset_name: fair_mon
+robot_type: metahand
+viewer: rerun-mujoco
+hand_type: right
+task: cat
+rerun_spawn: true
+ref_dt: 0.05
+max_sim_steps: 100
+horizon: 1.0
+ctrl_dt: 1.0
+knot_dt: 0.5
+num_dr: 2
+perturb_torque: 0.01
+pos_noise_scale: 0.1
+rot_noise_scale: 0.01
+joint_noise_scale: 0.3
+improvement_threshold: 0.001
+max_num_iterations: 16
+temperature: 0.1

@@ -366,12 +366,33 @@ def load_state(env: MJWPEnv, state):
     # return env
 
 
+def apply_perturbation(config: Config, env: MJWPEnv):
+    # get object id
+    right_obj_id = mujoco.mj_name2id(
+        env.model_cpu, mujoco.mjtObj.mjOBJ_BODY, "right_object"
+    )
+    left_obj_id = mujoco.mj_name2id(
+        env.model_cpu, mujoco.mjtObj.mjOBJ_BODY, "left_object"
+    )
+    xfrc_applied = wp.to_torch(env.data_wp.xfrc_applied)
+    if right_obj_id != -1:
+        xfrc_applied[:, right_obj_id, :3] = config.perturb_force
+        xfrc_applied[:, right_obj_id, 3:] = config.perturb_torque
+    if left_obj_id != -1:
+        xfrc_applied[:, left_obj_id, :3] = config.perturb_force
+        xfrc_applied[:, left_obj_id, 3:] = config.perturb_torque
+    wp.copy(env.data_wp.xfrc_applied, wp.from_torch(xfrc_applied))
+    return env
+
+
 def step_env(config: Config, env: MJWPEnv, ctrl_mujoco: torch.Tensor):
     """Step all worlds with provided MuJoCo-format controls of shape (N, nu)."""
     if ctrl_mujoco.dim() == 1:
         ctrl_mujoco = ctrl_mujoco.unsqueeze(0).repeat(env.num_worlds, 1)
     # Ensure we operate on the correct CUDA context/device
     with wp.ScopedDevice(env.device):
+        # apply perturbation
+        env = apply_perturbation(config, env)
         # step control
         wp.copy(env.data_wp.ctrl, wp.from_torch(ctrl_mujoco.to(torch.float32)))
         wp.capture_launch(env.graph)

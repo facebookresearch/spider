@@ -31,7 +31,7 @@ import loguru
 import matplotlib.pyplot as plt
 import imageio
 from contextlib import contextmanager
-from retarget.io import get_processed_data_dir, get_mesh_dir
+from spider.io import get_processed_data_dir, get_mesh_dir
 import json
 import time
 import rerun as rr

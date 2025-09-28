@@ -1,34 +1,33 @@
-"""
-Define the viewers for the retargeting.
+"""Define the viewers for the retargeting.
 
 Author: Chaoyi Pan
 Date: 2025-08-10
 """
 
+import sys
 from contextlib import contextmanager
 from pathlib import Path
+
 import cv2
-import sys
-import numpy as np
+import loguru
 import mujoco
 import mujoco.viewer
+import numpy as np
+
 from spider.config import Config
 from spider.viewers.rerun_viewer import (
-    log_scene_from_npz,
     build_and_log_scene,
     init_rerun,
     log_frame,
-    log_traces_from_info,
-    log_stage_improvements,
     log_reward_samples_by_iter,
+    log_scene_from_npz,
+    log_stage_improvements,
+    log_traces_from_info,
 )
-import loguru
 
 
 def setup_viewer(config: Config, mj_model: mujoco.MjModel, mj_data: mujoco.MjData):
-    """
-    Setup the viewer for the retargeting.
-    """
+    """Setup the viewer for the retargeting."""
     if "rerun" in config.viewer:
         # setup rerun viewer
         init_rerun(app_name="retarget", spawn=config.rerun_spawn)

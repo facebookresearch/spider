@@ -21,6 +21,8 @@ dependencies = [
   "newton[examples] @ git+https://github.com/newton-physics/newton.git",
   "rerun-sdk",
   "ipdb",
+  "pymeshlab",
+  "open3d",
 ]
 
 [project.scripts]

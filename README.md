@@ -24,7 +24,7 @@ uv run examples/run_mjwp.py
 
 ## FAIR Internal Workflows
 
-Montereal: 
+Montereal:
 
 ```bash
 # put data in example_datasets/raw/fair_mon/{task}_{hand_type}/{data_id}.pkl
@@ -55,4 +55,5 @@ uv run ik.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --hand-
 
 # retargeting
 cd spider/examples
-uv run run_mjwp.py --task=${TASK} --dataset-name=fair_mon --robot-type=metahand --hand-type=${HAND_TYPE} --viewer=rerun-mujoco --rerun-spawn --ref-dt=0.05 --horizon=0.8 --ctrl-dt=0.4
+uv run run_mjwp.py +override=fair_mon
+```

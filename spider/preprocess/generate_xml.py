@@ -1,12 +1,14 @@
-import os
 import json
+import os
+
+import loguru
 import mujoco
 import mujoco.viewer
 import numpy as np
 import tyro
-import loguru
 from loop_rate_limiters import RateLimiter
-from retarget.io import get_processed_data_dir
+
+from spider.io import get_processed_data_dir
 
 
 def main(
@@ -17,7 +19,7 @@ def main(
     task: str = "pick_spoon_bowl",
     data_id: int = 0,
     hand_floor_collision: bool = False,
-    object_density: float = 100,
+    object_density: float = 1000,
     object_armature: float = 0.0001,
     object_frictionloss: float = 0.0001,
     show_viewer: bool = True,
@@ -82,7 +84,7 @@ def main(
         task=task,
         data_id=data_id,
     )
-    contact_npz_path = f"{keypoint_data_dir}/trajectory_kinematic.npz"
+    contact_npz_path = f"{keypoint_data_dir}/trajectory_keypoints.npz"
     loaded_data = np.load(contact_npz_path)
     try:
         contact_left = loaded_data["contact_left"]
@@ -150,7 +152,7 @@ def main(
     # Load object convex meshes from task_info.json
     task_info_path = f"{keypoint_data_dir}/../task_info.json"
     task_info = {}
-    with open(task_info_path, "r") as f:
+    with open(task_info_path) as f:
         task_info = json.load(f)
     right_convex_dir = task_info.get("right_object_convex_dir")
     left_convex_dir = task_info.get("left_object_convex_dir")
@@ -213,11 +215,11 @@ def main(
     right_object_collision_names = []
     if hand_type in ["right", "bimanual"]:
         right_object_handle = mj_spec.worldbody.add_body(
-            name=f"right_object",
+            name="right_object",
             mocap=False,
         )
         right_object_handle.add_joint(
-            name=f"right_object_joint",
+            name="right_object_joint",
             type=mujoco.mjtJoint.mjJNT_FREE,
             armature=object_armature,
             frictionloss=object_frictionloss,
@@ -314,14 +316,14 @@ def main(
     left_object_collision_names = []
     if hand_type in ["left", "bimanual"]:
         left_object_handle = mj_spec.worldbody.add_body(
-            name=f"left_object",
+            name="left_object",
             mocap=False,
             gravcomp=(
                 1 if len(left_object_files) == 0 else 0
             ),  # if left object is not present, set gravcomp to 1 to avoid gravity
         )
         left_joint_handle = left_object_handle.add_joint(
-            name=f"left_object_joint",
+            name="left_object_joint",
             type=mujoco.mjtJoint.mjJNT_FREE,
             armature=object_armature,
             frictionloss=object_frictionloss,

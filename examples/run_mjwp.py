@@ -10,12 +10,13 @@ from __future__ import annotations
 
 import time
 
+import hydra
 import imageio
 import loguru
 import mujoco
 import numpy as np
 import torch
-import tyro
+from omegaconf import DictConfig
 
 from spider.config import Config, process_config
 from spider.interp import get_slice
@@ -155,6 +156,9 @@ def main(config: Config):
                 mj_data.time += config.sim_dt
                 if config.save_video and renderer is not None:
                     if i % int(np.round(config.render_dt / config.sim_dt)) == 0:
+                        mj_data_ref.qpos[:] = (
+                            qpos_ref[sim_step + i].detach().cpu().numpy()
+                        )
                         image = render_image(
                             config, renderer, mj_model, mj_data, mj_data_ref
                         )
@@ -224,6 +228,24 @@ def main(config: Config):
     return
 
 
+@hydra.main(version_base=None, config_path="config", config_name="default")
+def run_main(cfg: DictConfig) -> None:
+    # Convert DictConfig to Config dataclass, handling special fields
+    config_dict = dict(cfg)
+
+    # Handle special conversions
+    if "noise_scale" in config_dict and config_dict["noise_scale"] is None:
+        config_dict.pop("noise_scale")  # Let the default factory handle it
+
+    # Convert lists to tuples where needed
+    if "pair_margin_range" in config_dict:
+        config_dict["pair_margin_range"] = tuple(config_dict["pair_margin_range"])
+    if "xy_offset_range" in config_dict:
+        config_dict["xy_offset_range"] = tuple(config_dict["xy_offset_range"])
+
+    config = Config(**config_dict)
+    main(config)
+
+
 if __name__ == "__main__":
-    cfg = tyro.cli(Config)
-    main(cfg)
+    run_main()
