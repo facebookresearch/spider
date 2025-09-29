@@ -1,22 +1,20 @@
-"""
-Get contact information from mujoco simulation. Replay the trajectory and locate contact points.
+"""Get contact information from mujoco simulation. Replay the trajectory and locate contact points.
 
 Author: Chaoyi Pan
 Date: 2025-07-07
 """
 
+import json
 import os
-import pickle
-import numpy as np
-import mujoco
-import mujoco.viewer
-from scipy.spatial.transform import Rotation as R
-from loop_rate_limiters import RateLimiter
-import tyro
+from contextlib import contextmanager
+
 import loguru
 import matplotlib.pyplot as plt
-from contextlib import contextmanager
-import json
+import mujoco
+import mujoco.viewer
+import numpy as np
+import tyro
+from loop_rate_limiters import RateLimiter
 
 import spider
 from spider.io import get_processed_data_dir
@@ -45,10 +43,10 @@ def main(
     )
     os.makedirs(processed_dir, exist_ok=True)
     # load qpos
-    qpos_path = f"{processed_dir}/trajectory_kinematic.npz"
+    qpos_path = f"{processed_dir}/trajectory_keypoints.npz"
     if not os.path.exists(qpos_path):
         raise FileNotFoundError(
-            f"trajectory_kinematic.npz not found at {qpos_path}. Run dataset preprocessing first."
+            f"trajectory_keypoints.npz not found at {qpos_path}. Run dataset preprocessing first."
         )
     data = np.load(qpos_path)
     qpos_wrist_right = data["qpos_wrist_right"]
@@ -65,7 +63,7 @@ def main(
         and "contact_pos_right" in data
     ):
         add_contact_site = True
-        loguru.logger.info(f"Contact and contact_pos already in the data")
+        loguru.logger.info("Contact and contact_pos already in the data")
     else:
         add_contact_site = False
 
@@ -116,7 +114,7 @@ def main(
         )
         right_object_files, left_object_files = [], []
     else:
-        with open(task_info_path, "r") as f:
+        with open(task_info_path) as f:
             task_info = json.load(f)
         right_convex_dir = task_info.get("right_object_convex_dir")
         left_convex_dir = task_info.get("left_object_convex_dir")
@@ -415,7 +413,7 @@ def main(
                     raise ValueError(f"Invalid hand type: {hand_type}")
                 # save contact_seq_smooth to npz
                 # save contact info to processed dir for future reference
-                contact_out_path = f"{processed_dir}/trajectory_kinematic.npz"
+                contact_out_path = f"{processed_dir}/trajectory_keypoints.npz"
                 np.savez(
                     contact_out_path,
                     qpos_wrist_right=qpos_wrist_right,
