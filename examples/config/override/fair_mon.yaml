@@ -15,7 +15,7 @@ num_dr: 2
 perturb_torque: 0.01
 pos_noise_scale: 0.1
 rot_noise_scale: 0.01
-joint_noise_scale: 0.3
+joint_noise_scale: 0.2
 improvement_threshold: 0.001
 max_num_iterations: 16
 temperature: 0.1
