@@ -31,7 +31,7 @@ method: "mjwp"
 horizon: null  # default: 1.2
 sim_dt: null   # default: 0.01  
 ctrl_dt: null  # default: 0.2
-show_viewer: false  # typically false for batch processing
+show_viewer: true  # typically false for batch processing
 save_video: true
 save_info: true
 max_sim_steps: -1  # -1 means use full trajectory length

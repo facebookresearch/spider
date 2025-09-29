@@ -33,7 +33,7 @@ from scipy.interpolate import interp1d
 from scipy.spatial.transform import Rotation as R
 
 from spider.io import get_mesh_dir, get_processed_data_dir
-
+import spider
 
 def recover_original_array(array_20d, fill_value=0.0):
     """Recovers the original 21-dimensional array from a 20-dimensional array (from Francois).
@@ -559,7 +559,7 @@ def main(
         )
 
         # Load MuJoCo model for visualization
-        mj_spec = mujoco.MjSpec.from_file("../assets/mano/empty_scene.xml")
+        mj_spec = mujoco.MjSpec.from_file(f"{spider.ROOT}/assets/mano/empty_scene.xml")
 
         # Add right object to body "right_object"
         object_right_handle = mj_spec.worldbody.add_body(

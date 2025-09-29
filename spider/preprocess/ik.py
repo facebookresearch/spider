@@ -175,6 +175,7 @@ def main(
     object_solimp_width: float = 0.001,
     max_num_initial_guess: int = 8,
     average_frame_size: int = 3,
+    aggregate_contact: bool = True, 
 ):
     # resolved processed directories
     dataset_dir = os.path.abspath(dataset_dir)
@@ -216,6 +217,10 @@ def main(
         contact_left = np.ones((qpos_finger_right.shape[0], 5))
         contact_right = np.ones((qpos_finger_left.shape[0], 5))
     contact_ref = np.concatenate([contact_right, contact_left], axis=1)
+    if aggregate_contact:
+        contact_aggregated = np.any(contact_ref, axis=-1)
+        for i in range(contact_ref.shape[1]):
+            contact_ref[:, i] = contact_aggregated
     # get the first contact frame where contact_left turns to 1 (two 1s consecutive)
     first_contact_frame_left = np.zeros(5) + qpos_finger_right.shape[0]
     first_contact_frame_right = np.zeros(5) + qpos_finger_left.shape[0]
