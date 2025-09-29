@@ -33,7 +33,7 @@ from scipy.interpolate import interp1d
 from scipy.spatial.transform import Rotation as R
 
 from spider.io import get_mesh_dir, get_processed_data_dir
-
+import spider
 
 def recover_original_array(array_20d, fill_value=0.0):
     """Recovers the original 21-dimensional array from a 20-dimensional array (from Francois).
@@ -223,7 +223,7 @@ def main(
     num_interpolation_frames: int = 20,
     mesh_downsample_points: int = 512,
     downsample_mesh: bool = False,
-    z_offset: float = 0.02,
+    z_offset: float = 0.0,
     center_initial_frame: bool = True,
 ):
     dataset_dir = os.path.abspath(dataset_dir)
@@ -382,6 +382,8 @@ def main(
 
         # Create rotation matrix
         rot_matrix = np.column_stack([right_vec, up_vec, forward_vec])
+        R_z = R.from_euler('z', -90, degrees=True).as_matrix()
+        rot_matrix = np.column_stack([right_vec, up_vec, forward_vec]) @ R_z
         wrist_orientations.append(R.from_matrix(rot_matrix).as_rotvec())
 
     wrist_orientations = np.array(wrist_orientations)
@@ -557,7 +559,7 @@ def main(
         )
 
         # Load MuJoCo model for visualization
-        mj_spec = mujoco.MjSpec.from_file("../assets/mano/empty_scene.xml")
+        mj_spec = mujoco.MjSpec.from_file(f"{spider.ROOT}/assets/mano/empty_scene.xml")
 
         # Add right object to body "right_object"
         object_right_handle = mj_spec.worldbody.add_body(
