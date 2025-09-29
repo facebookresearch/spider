@@ -223,7 +223,7 @@ def main(
     num_interpolation_frames: int = 20,
     mesh_downsample_points: int = 512,
     downsample_mesh: bool = False,
-    z_offset: float = 0.02,
+    z_offset: float = 0.0,
     center_initial_frame: bool = True,
 ):
     dataset_dir = os.path.abspath(dataset_dir)
