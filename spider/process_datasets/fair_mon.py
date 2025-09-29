@@ -1,5 +1,4 @@
-"""
-Process real world data from FAIR Montreal Campus.
+"""Process real world data from FAIR Montreal Campus.
 
 1. Convert mesh to obj
 2. Convert original data to finger tip, object and wrist position and rotation using hand landmarks
@@ -15,33 +14,29 @@ Author: Chaoyi Pan
 Date: 2025-01-28
 """
 
-from typing import Optional
+import json
 import os
 import pickle
-import torch
-import numpy as np
+import time
+
+import loguru
 import mujoco
 import mujoco.viewer
-from scipy.spatial.transform import Rotation as R
-from scipy.interpolate import interp1d
-from loop_rate_limiters import RateLimiter
-import tyro
-import pymeshlab
-import loguru
-import matplotlib.pyplot as plt
-import imageio
-from contextlib import contextmanager
-from spider.io import get_processed_data_dir, get_mesh_dir
-import json
-import time
-import rerun as rr
+import numpy as np
 import open3d as o3d
+import rerun as rr
+import torch
 import trimesh
+import tyro
+from loop_rate_limiters import RateLimiter
+from scipy.interpolate import interp1d
+from scipy.spatial.transform import Rotation as R
+
+from spider.io import get_mesh_dir, get_processed_data_dir
 
 
 def recover_original_array(array_20d, fill_value=0.0):
-    """
-    Recovers the original 21-dimensional array from a 20-dimensional array (from Francois).
+    """Recovers the original 21-dimensional array from a 20-dimensional array (from Francois).
 
     Args:
         array_20d: The 20-dimensional array (as a list or NumPy array).
@@ -96,9 +91,7 @@ def recover_original_array(array_20d, fill_value=0.0):
 
 
 def index_original_array(array_21d):
-    """
-    Index the original 21-dimensional array to a 21-dimensional array (from Changhao).
-    """
+    """Index the original 21-dimensional array to a 21-dimensional array (from Changhao)."""
     mano_joint_mapping = [
         0,
         13,  # thumb
@@ -127,8 +120,7 @@ def index_original_array(array_21d):
 
 
 def downsample_point_cloud(points, target_num_points=512):
-    """
-    Downsample point cloud to target number of points using random sampling.
+    """Downsample point cloud to target number of points using random sampling.
 
     Args:
         points (np.ndarray): Input point cloud of shape (N, 3)
@@ -186,8 +178,7 @@ def add_ground(size=3.0, z_height=0.2):
 
 
 def interpolate_pointclouds(pointclouds, M):
-    """
-    Interpolates along the first dimension of a (N, P, 3) or (N, 3) array to get M frames.
+    """Interpolates along the first dimension of a (N, P, 3) or (N, 3) array to get M frames.
 
     Args:
         pointclouds (np.ndarray): shape (N, P, 3) or (N, 3)
@@ -223,7 +214,7 @@ def main(
     data_id: int = 0,
     task: str = "coke",
     right_object_name: str = "coke",
-    left_object_name: Optional[str] = None,
+    left_object_name: str | None = None,
     show_viewer: bool = True,
     show_rerun: bool = False,
     max_steps: int = -1,
@@ -233,7 +224,7 @@ def main(
     mesh_downsample_points: int = 512,
     downsample_mesh: bool = False,
     z_offset: float = 0.02,
-    center_initial_frame: bool = False,
+    center_initial_frame: bool = True,
 ):
     dataset_dir = os.path.abspath(dataset_dir)
     output_dir = get_processed_data_dir(
@@ -524,7 +515,7 @@ def main(
     task_info_path = f"{output_dir}/../task_info.json"
     if os.path.exists(task_info_path):
         # Load existing task info and update it
-        with open(task_info_path, "r") as f:
+        with open(task_info_path) as f:
             existing_task_info = json.load(f)
         existing_task_info.update(task_info)
         with open(task_info_path, "w") as f:
@@ -537,7 +528,7 @@ def main(
 
     # Save processed data
     np.savez(
-        f"{output_dir}/trajectory_kinematic.npz",
+        f"{output_dir}/trajectory_keypoints.npz",
         qpos_wrist_right=qpos_wrist_right,
         qpos_finger_right=qpos_finger_right,
         qpos_obj_right=qpos_obj_right,
@@ -545,7 +536,7 @@ def main(
         qpos_finger_left=qpos_finger_left,
         qpos_obj_left=qpos_obj_left,
     )
-    loguru.logger.info(f"Saved qpos to {output_dir}/trajectory_kinematic.npz")
+    loguru.logger.info(f"Saved qpos to {output_dir}/trajectory_keypoints.npz")
 
     # Rerun visualization
     if show_rerun:
@@ -566,7 +557,7 @@ def main(
         )
 
         # Load MuJoCo model for visualization
-        mj_spec = mujoco.MjSpec.from_file(f"../assets/mano/empty_scene.xml")
+        mj_spec = mujoco.MjSpec.from_file("../assets/mano/empty_scene.xml")
 
         # Add right object to body "right_object"
         object_right_handle = mj_spec.worldbody.add_body(
@@ -742,8 +733,7 @@ def main(
 
 
 def trajectory_from_grasp(data, num_frames=20):
-    """
-    Create a trajectory from a single grasp by interpolating between start, grasp, and end poses.
+    """Create a trajectory from a single grasp by interpolating between start, grasp, and end poses.
     Uses hand landmarks instead of vertices for position and orientation computation.
     """
     prediction = data["hand_predictions"][0]
@@ -799,9 +789,7 @@ def trajectory_from_grasp(data, num_frames=20):
 
 
 def visualize_rerun(trajectory_data):
-    """
-    Visualize trajectory data using rerun
-    """
+    """Visualize trajectory data using rerun"""
     rr.init("fair_mon_visualization", spawn=True)
     add_ground()
 
@@ -816,7 +804,7 @@ def visualize_rerun(trajectory_data):
 
     # Visualize frame by frame
     for i, (landmarks, obj_pos) in enumerate(
-        zip(hand_landmarks_trajectory, object_positions)
+        zip(hand_landmarks_trajectory, object_positions, strict=False)
     ):
         rr.log(
             "object", rr.Points3D(obj_pos.reshape(1, 3), colors=[0, 255, 0], radii=0.02)
