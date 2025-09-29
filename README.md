@@ -54,6 +54,6 @@ cd spider/preprocess
 uv run ik.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --hand-type=${HAND_TYPE} --robot-type=metahand --open-hand
 
 # retargeting
-cd spider/examples
+cd examples
 uv run run_mjwp.py +override=fair_mon
 ```
