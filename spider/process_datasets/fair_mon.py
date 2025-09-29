@@ -382,6 +382,8 @@ def main(
 
         # Create rotation matrix
         rot_matrix = np.column_stack([right_vec, up_vec, forward_vec])
+        R_z = R.from_euler('z', -90, degrees=True).as_matrix()
+        rot_matrix = np.column_stack([right_vec, up_vec, forward_vec]) @ R_z
         wrist_orientations.append(R.from_matrix(rot_matrix).as_rotvec())
 
     wrist_orientations = np.array(wrist_orientations)
