@@ -453,7 +453,7 @@ def get_reward(
     reward = obj_dist_rew + obj_arti_rew
 
     # Add imitation reward if enabled
-    imi_rew_weight = getattr(config, "imi_rew_weight", 1.0)
+    imi_rew_weight = getattr(config, "imi_rew_weight", 3.0)
     if imi_rew_weight > 0.0:
         imi_fingertip_beta = getattr(config, "imi_fingertip_beta", 1.0)
         imi_wrist_weight = getattr(config, "imi_wrist_weight", 0.0)

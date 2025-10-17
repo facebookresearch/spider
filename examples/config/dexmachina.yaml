@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 # Dataset configuration (not used by DexMachina, but kept for compatibility)
-dataset_dir: "../example_datasets"
+dataset_dir: "example_datasets"
 dataset_name: "arctic"
 robot_type: "inspire_hand"  # "inspire_hand", "xhand", "dex3_hand"
 hand_type: "bimanual"
@@ -27,7 +27,7 @@ max_sim_steps: -1  # -1 means use full trajectory length
 nu: 36
 
 # MPC optimization parameters
-max_num_iterations: 16  # Number of iterations per MPC step
+max_num_iterations: 32  # Number of iterations per MPC step
 num_samples: 1024  # Number of parallel samples for CEM
 last_ctrl_noise_scale: 1.0
 first_ctrl_noise_scale: 0.5
