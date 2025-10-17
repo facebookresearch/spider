@@ -31,12 +31,12 @@ max_num_iterations: 32  # Number of iterations per MPC step
 num_samples: 1024  # Number of parallel samples for CEM
 last_ctrl_noise_scale: 1.0
 first_ctrl_noise_scale: 0.5
-final_noise_scale: 0.01
+final_noise_scale: 0.003
 pos_noise_scale: 1.0
 rot_noise_scale: 1.0
 joint_noise_scale: 1.0
 improvement_threshold: 0.01
-improvement_check_steps: 2
+improvement_check_steps: 4
 terminal_rew_scale: 10.0
 temperature: 0.1
 

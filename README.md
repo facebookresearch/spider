@@ -27,7 +27,8 @@ uv run examples/run_mjwp.py
 
 ```bash
 conda activate dexmachina
-
+# note: install spider only without mujoco warp since we only use the optimization part
+pip install --ignore-requires-python --no-deps -e .
 ```
 
 ## FAIR Internal Workflows
