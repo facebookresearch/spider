@@ -64,6 +64,7 @@ class Config:
     temperature: float = 1.0
     max_num_iterations: int = 16
     improvement_threshold: float = 0.01
+    improvement_check_steps: int = 1
     # Compilation
     use_torch_compile: bool = True  # use torch.compile for acceleration
     # Noise scheduling

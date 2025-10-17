@@ -344,6 +344,7 @@ def get_imitation_reward(
     else:
         imi_rew = fingertip_rew
 
+    imi_rew -= 1.0
     imi_rew *= imi_rew_weight
     return imi_rew
 
@@ -422,6 +423,7 @@ def get_contact_reward(
 
     # Average contact rewards from both hands
     contact_rew = (contact_rew_left + contact_rew_right) / 2.0
+    contact_rew -= 1.0
     contact_rew *= contact_rew_weight
 
     return contact_rew
@@ -451,12 +453,12 @@ def get_reward(
     reward = obj_dist_rew + obj_arti_rew
 
     # Add imitation reward if enabled
-    imi_rew_weight = getattr(config, "imi_rew_weight", 0.0)
+    imi_rew_weight = getattr(config, "imi_rew_weight", 1.0)
     if imi_rew_weight > 0.0:
-        imi_fingertip_beta = getattr(config, "imi_fingertip_beta", 20.0)
+        imi_fingertip_beta = getattr(config, "imi_fingertip_beta", 1.0)
         imi_wrist_weight = getattr(config, "imi_wrist_weight", 0.0)
-        imi_wrist_rot_beta = getattr(config, "imi_wrist_rot_beta", 3.0)
-        imi_wrist_pos_beta = getattr(config, "imi_wrist_pos_beta", 10.0)
+        imi_wrist_rot_beta = getattr(config, "imi_wrist_rot_beta", 1.0)
+        imi_wrist_pos_beta = getattr(config, "imi_wrist_pos_beta", 1.0)
         exp_kpt_first = getattr(config, "exp_kpt_first", True)
 
         imi_rew = get_imitation_reward(
@@ -473,9 +475,9 @@ def get_reward(
     reward += imi_rew
 
     # Add contact reward if enabled
-    contact_rew_weight = getattr(config, "contact_rew_weight", 1.0)
+    contact_rew_weight = getattr(config, "contact_rew_weight", 0.0)
     if contact_rew_weight > 0.0:
-        contact_beta = getattr(config, "contact_beta", 30.0)
+        contact_beta = getattr(config, "contact_beta", 1.0)
         wrist_frame_contact = getattr(config, "wrist_frame_contact", True)
         mask_zero_contact = getattr(config, "mask_zero_contact", True)
         multiply_frame_contact = getattr(config, "multiply_frame_contact", True)
@@ -600,6 +602,7 @@ def step_env(config: Config, env: BaseEnv, ctrl: torch.Tensor):
         obj.step()
     env.scene.step()
     env.episode_length_buf += 1
+    env._compute_intermediate_values()
     return env
 
 

@@ -16,10 +16,10 @@ device: "cuda:0"
 # Simulation and control parameters
 simulator: dexmachina
 sim_dt: 0.02  # Genesis simulation timestep
-ctrl_dt: 0.02  # Control timestep (how often MPC updates)
-knot_dt: 0.04  # Knot point spacing
+ctrl_dt: 0.20  # Control timestep (how often MPC updates)
+knot_dt: 0.20  # Knot point spacing
 ref_dt: 0.02  # Reference trajectory timestep
-horizon: 0.20  # MPC horizon in seconds
+horizon: 0.40  # MPC horizon in seconds
 show_viewer: true
 save_video: true
 save_info: true
@@ -30,13 +30,14 @@ nu: 36
 max_num_iterations: 16  # Number of iterations per MPC step
 num_samples: 1024  # Number of parallel samples for CEM
 last_ctrl_noise_scale: 1.0
-first_ctrl_noise_scale: 0.3
-final_noise_scale: 0.5
+first_ctrl_noise_scale: 0.5
+final_noise_scale: 0.01
 pos_noise_scale: 1.0
-rot_noise_scale: 0.3
-joint_noise_scale: 3.0
+rot_noise_scale: 1.0
+joint_noise_scale: 1.0
 improvement_threshold: 0.01
-terminal_rew_scale: 1.0
+improvement_check_steps: 2
+terminal_rew_scale: 10.0
 temperature: 0.1
 
 # Domain randomization (curriculum learning)

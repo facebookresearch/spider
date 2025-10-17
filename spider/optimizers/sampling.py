@@ -329,7 +329,7 @@ def make_optimize_fn(
             sample_params_list.append(sample_params)
 
         # optimize
-        last_improvement = 0.0
+        improvement_history = []
         for i in range(config.max_num_iterations):
             ctrls, info = optimize_once(
                 config,
@@ -340,13 +340,18 @@ def make_optimize_fn(
                 sample_params_list[i],
             )
             infos.append(info)
-            # early stopping
-            if (
-                info["improvement"] < config.improvement_threshold
-                and last_improvement < config.improvement_threshold
-            ):
-                break
-            last_improvement = info["improvement"]
+            improvement_history.append(info["improvement"])
+
+            # early stopping: check if last n steps all have improvement below threshold
+            if len(improvement_history) >= config.improvement_check_steps:
+                recent_improvements = improvement_history[
+                    -config.improvement_check_steps :
+                ]
+                if all(
+                    imp < config.improvement_threshold for imp in recent_improvements
+                ):
+                    break
+
         # TODO: think about a better logic
         # append zeros to infos to make sure the length is the same as max_num_iterations
         fake_info = {}

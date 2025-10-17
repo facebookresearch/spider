@@ -53,13 +53,19 @@ def main(config: Config):
         config.max_sim_steps = min(env.max_episode_length, config.max_sim_steps)
 
     # Create placeholder reference data for compatibility
-    ref_data = (torch.zeros(config.max_sim_steps, config.nu, device=config.device),)
+    ref_data = (
+        torch.zeros(
+            config.max_sim_steps + config.horizon_steps + config.ctrl_steps,
+            config.nu,
+            device=config.device,
+        ),
+    )
 
     # Setup env params (curriculum for object joint stiffness/damping)
     env_params_list = []
-    kp_max = 10.0
-    kv_max = 1.0
-    eta = 0.01 ** (1.0 / (config.max_num_iterations - 1))
+    kp_max = 0.0
+    kv_max = 0.0
+    eta = 0.001 ** (1.0 / (config.max_num_iterations - 1))
     kp_list = kp_max * (eta ** np.arange(config.max_num_iterations))
     kp_list[-1] = 0.0
     kv_list = kv_max * (eta ** np.arange(config.max_num_iterations))
