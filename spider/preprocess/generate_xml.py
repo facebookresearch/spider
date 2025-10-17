@@ -8,11 +8,12 @@ import numpy as np
 import tyro
 from loop_rate_limiters import RateLimiter
 
+from spider import ROOT
 from spider.io import get_processed_data_dir
 
 
 def main(
-    dataset_dir: str = "../../example_datasets",
+    dataset_dir: str = f"{ROOT}/../example_datasets",
     dataset_name: str = "oakink",
     robot_type: str = "allegro",
     hand_type: str = "bimanual",

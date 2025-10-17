@@ -223,9 +223,20 @@ def get_reward(
     )
     qpos_weight = _weight_diff_qpos(config)
     delta_qpos = qpos_diff * qpos_weight
-    cost_qpos = torch.norm(delta_qpos, p=2, dim=1)
-    cost_qvel = config.vel_rew_scale * torch.norm(qvel_sim - qvel_ref, p=2, dim=1)
-    return -(cost_qpos + cost_qvel)
+    qpos_dist = torch.norm(delta_qpos, p=2, dim=1)
+    qvel_dist = torch.norm(qvel_sim - qvel_ref, p=2, dim=1)
+
+    qpos_rew = -qpos_dist * 1.0
+    qvel_rew = -config.vel_rew_scale * qvel_dist * 1.0
+    reward = qpos_rew + qvel_rew
+
+    info = {
+        "qpos_dist": qpos_dist,
+        "qvel_dist": qvel_dist,
+        "qpos_rew": qpos_rew,
+        "qvel_rew": qvel_rew,
+    }
+    return reward, info
 
 
 def get_terminal_reward(
@@ -235,25 +246,28 @@ def get_terminal_reward(
 ) -> torch.Tensor:
     """Terminal reward focusing on object tracking."""
     # return config.terminal_rew_scale * get_reward(config, env, ref_slice)
-    qpos_ref, qvel_ref, ctrl_ref, contact_ref, _ = ref_slice
-    qpos_sim = wp.to_torch(env.data_wp.qpos)
-    qpos_weight = torch.zeros(qpos_sim.shape[1], device=config.device)
-    if config.hand_type == "bimanual":
-        qpos_weight[-14:-11] = config.pos_rew_scale
-        qpos_weight[-11:-7] = config.rot_rew_scale
-        qpos_weight[-7:-4] = config.pos_rew_scale
-        qpos_weight[-4:] = config.rot_rew_scale
-    elif config.hand_type in ["right", "left"]:
-        qpos_weight[-7:-4] = config.pos_rew_scale
-        qpos_weight[-4:] = config.rot_rew_scale
-    elif config.hand_type in ["CMU", "DanceDB"]:
-        qpos_weight[:3] = config.pos_rew_scale
-        qpos_weight[3:7] = config.rot_rew_scale
-    else:
-        raise ValueError(f"Invalid hand_type: {config.hand_type}")
-    delta_qpos = (qpos_sim - qpos_ref) * qpos_weight
-    cost_object = config.terminal_rew_scale * torch.sum(delta_qpos**2, dim=1)
-    return -cost_object
+    # qpos_ref, qvel_ref, ctrl_ref, contact_ref, _ = ref_slice
+    # qpos_sim = wp.to_torch(env.data_wp.qpos)
+    # qpos_weight = torch.zeros(qpos_sim.shape[1], device=config.device)
+    # if config.hand_type == "bimanual":
+    #     qpos_weight[-14:-11] = config.pos_rew_scale
+    #     qpos_weight[-11:-7] = config.rot_rew_scale
+    #     qpos_weight[-7:-4] = config.pos_rew_scale
+    #     qpos_weight[-4:] = config.rot_rew_scale
+    # elif config.hand_type in ["right", "left"]:
+    #     qpos_weight[-7:-4] = config.pos_rew_scale
+    #     qpos_weight[-4:] = config.rot_rew_scale
+    # elif config.hand_type in ["CMU", "DanceDB"]:
+    #     qpos_weight[:3] = config.pos_rew_scale
+    #     qpos_weight[3:7] = config.rot_rew_scale
+    # else:
+    #     raise ValueError(f"Invalid hand_type: {config.hand_type}")
+    # delta_qpos = (qpos_sim - qpos_ref) * qpos_weight
+    # cost_object = config.terminal_rew_scale * torch.sum(delta_qpos**2, dim=1)
+
+    rew, info = get_reward(config, env, ref_slice)
+    terminal_rew = config.terminal_rew_scale * rew
+    return terminal_rew, info
 
 
 def get_qpos(config: Config, env: MJWPEnv) -> torch.Tensor:

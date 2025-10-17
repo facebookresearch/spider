@@ -32,8 +32,9 @@ from loop_rate_limiters import RateLimiter
 from scipy.interpolate import interp1d
 from scipy.spatial.transform import Rotation as R
 
-from spider.io import get_mesh_dir, get_processed_data_dir
 import spider
+from spider.io import get_mesh_dir, get_processed_data_dir
+
 
 def recover_original_array(array_20d, fill_value=0.0):
     """Recovers the original 21-dimensional array from a 20-dimensional array (from Francois).
@@ -209,7 +210,7 @@ def interpolate_pointclouds(pointclouds, M):
 
 
 def main(
-    dataset_dir: str = "../../example_datasets",
+    dataset_dir: str = f"{spider.ROOT}/../example_datasets",
     hand_type: str = "right",
     data_id: int = 0,
     task: str = "coke",
@@ -382,7 +383,7 @@ def main(
 
         # Create rotation matrix
         rot_matrix = np.column_stack([right_vec, up_vec, forward_vec])
-        R_z = R.from_euler('z', -90, degrees=True).as_matrix()
+        R_z = R.from_euler("z", -90, degrees=True).as_matrix()
         rot_matrix = np.column_stack([right_vec, up_vec, forward_vec]) @ R_z
         wrist_orientations.append(R.from_matrix(rot_matrix).as_rotvec())
 

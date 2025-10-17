@@ -21,7 +21,7 @@ from spider.io import get_processed_data_dir
 
 
 def main(
-    dataset_dir: str = "../../example_datasets",
+    dataset_dir: str = f"{spider.ROOT}/../example_datasets",
     dataset_name: str = "oakink",
     hand_type: str = "bimanual",
     task: str = "pick_spoon_bowl",

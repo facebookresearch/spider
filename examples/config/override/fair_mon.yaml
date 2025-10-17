@@ -1,7 +1,7 @@
 # @package _global_
 # Override configuration for fair_mon dataset
 dataset_name: fair_mon
-robot_type: metahand
+robot_type: allegro
 viewer: rerun-mujoco
 hand_type: right
 task: cat

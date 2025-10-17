@@ -21,6 +21,7 @@ from mujoco import MjSpec
 from omegaconf import DictConfig, OmegaConf
 from scipy import signal
 
+from spider import ROOT
 from spider.io import get_processed_data_dir
 
 
@@ -154,7 +155,7 @@ def get_robot_sites(robot_type: str, hand_type: str):
 
 # parameters
 def main(
-    dataset_dir: str = "../../example_datasets",
+    dataset_dir: str = f"{ROOT}/../example_datasets",
     dataset_name: str = "oakink",
     robot_type: str = "allegro",
     hand_type: str = "bimanual",
@@ -175,7 +176,7 @@ def main(
     object_solimp_width: float = 0.001,
     max_num_initial_guess: int = 8,
     average_frame_size: int = 3,
-    aggregate_contact: bool = True, 
+    aggregate_contact: bool = True,
 ):
     # resolved processed directories
     dataset_dir = os.path.abspath(dataset_dir)

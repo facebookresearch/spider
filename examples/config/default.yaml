@@ -8,14 +8,14 @@ hand_type: bimanual # "left", "right", "bimanual", "CMU"
 task: pick_spoon_bowl
 
 # === DATASET CONFIGURATION ===
-dataset_dir: ${oc.env:SPIDER_ROOT,../example_datasets}/../example_datasets
+dataset_dir: example_datasets
 dataset_name: oakink
 data_id: 0
 model_path: ""
 data_path: ""
 
 # === SIMULATOR CONFIGURATION ===
-simulator: isaac # "isaac" | "mujoco" | "mjwp" | "mjwp_cons" | "mjwp_eq" | "mjwp_cons_eq" | "kinematic"
+simulator: mjwp # "isaac" | "mujoco" | "mjwp" | "mjwp_cons" | "mjwp_eq" | "mjwp_cons_eq" | "kinematic"
 device: cuda:0
 # Simulation timing
 sim_dt: 0.01 # simulation timestep

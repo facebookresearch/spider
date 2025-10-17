@@ -6,6 +6,7 @@ Create env and install:
 
 ```bash
 uv sync
+pip install --ignore-requires-python --no-deps -e .
 ```
 
 Clone example datasets:
@@ -22,6 +23,13 @@ Run MJWP on a processed trial:
 uv run examples/run_mjwp.py
 ```
 
+## DexMachina Workflow
+
+```bash
+conda activate dexmachina
+
+```
+
 ## FAIR Internal Workflows
 
 Montereal:
@@ -29,31 +37,26 @@ Montereal:
 ```bash
 # put data in example_datasets/raw/fair_mon/{task}_{hand_type}/{data_id}.pkl
 # e.g. example_datasets/raw/fair_mon/cat_right/0.pkl
-TASK=cat
+TASK=coke
 HAND_TYPE=right
 DATA_ID=0
+ROBOT_TYPE=allegro
 
 # read data
-cd spider/process_datasets
-uv run fair_mon.py --task=${TASK} --right-object-name=cat --hand-type=${HAND_TYPE} --data-id=${DATA_ID}
+uv run spider/process_datasets/fair_mon.py --task=${TASK} --right-object-name=cat --hand-type=${HAND_TYPE} --data-id=${DATA_ID}
 
 # decompose object
-cd spider/preprocess
-uv run decompose.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --hand-type=${HAND_TYPE}
+uv run spider/preprocess/decompose.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --hand-type=${HAND_TYPE}
 
 # detect contact (optional)
-cd spider/preprocess
-uv run detect_contact.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --hand-type=${HAND_TYPE}
+uv run spider/preprocess/detect_contact.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --hand-type=${HAND_TYPE}
 
 # generate scene
-cd spider/preprocess
-uv run generate_xml.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --hand-type=${HAND_TYPE} --robot-type=metahand
+uv run spider/preprocess/generate_xml.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --hand-type=${HAND_TYPE} --robot-type=${ROBOT_TYPE}
 
 # kinematic retargeting
-cd spider/preprocess
-uv run ik.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --hand-type=${HAND_TYPE} --robot-type=metahand --open-hand
+uv run spider/preprocess/ik.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --hand-type=${HAND_TYPE} --robot-type=${ROBOT_TYPE} --open-hand
 
 # retargeting
-cd examples
-uv run run_mjwp.py +override=fair_mon
+uv run examples/run_mjwp.py +override=fair_mon
 ```

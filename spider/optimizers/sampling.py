@@ -18,15 +18,15 @@ from spider.config import Config
 from spider.interp import interp
 
 
-def sample_ctrls(
+def _sample_ctrls_impl(
     config, ctrls: torch.Tensor, sample_params: dict | None = None
 ) -> torch.Tensor:
-    """Sample control actions from the control signal.
+    """Sample control actions from the control signal (implementation).
 
     Args:
         config: Config
         ctrls: Control actions, shape (horizon_steps, nu)
-        noise_scale: Noise scale, shape (num_samples, num_knots, nu)
+        sample_params: Optional dict with sampling parameters (e.g., global_noise_scale)
 
     Returns:
         Control actions, shape (num_samples, horizon_steps, nu)
@@ -44,6 +44,29 @@ def sample_ctrls(
     # add to ctrls
     ctrls_samples = ctrls + delta_ctrl_samples
     return ctrls_samples
+
+
+# Compiled version
+_sample_ctrls_compiled = torch.compile(_sample_ctrls_impl)
+
+
+def sample_ctrls(
+    config, ctrls: torch.Tensor, sample_params: dict | None = None
+) -> torch.Tensor:
+    """Sample control actions from the control signal.
+
+    Args:
+        config: Config
+        ctrls: Control actions, shape (horizon_steps, nu)
+        sample_params: Optional dict with sampling parameters (e.g., global_noise_scale)
+
+    Returns:
+        Control actions, shape (num_samples, horizon_steps, nu)
+    """
+    if config.use_torch_compile:
+        return _sample_ctrls_compiled(config, ctrls, sample_params)
+    else:
+        return _sample_ctrls_impl(config, ctrls, sample_params)
 
 
 def make_rollout_fn(
@@ -88,12 +111,13 @@ def make_rollout_fn(
         N, H = ctrls.shape[:2]
         trace_list = []
         cum_rew = torch.zeros(N, device=config.device)
+        info_list = []
         for t in range(H):
             # step the environment
             step_env(config, env, ctrls[:, t])  # (N, nu)
             # get reward
             ref = [r[t] for r in ref_slice]
-            rew = (
+            rew, info = (
                 get_reward(config, env, ref)
                 if t < H - 1
                 else get_terminal_reward(config, env, ref)
@@ -102,6 +126,12 @@ def make_rollout_fn(
             # get trace
             trace = get_trace(config, env)
             trace_list.append(trace)
+            info_list.append(info)
+        info_combined = {
+            k: torch.stack([info[k] for info in info_list], axis=0)
+            for k in info_list[0].keys()
+        }
+        mean_info = {k: v.mean(axis=0) for k, v in info_combined.items()}
         mean_rew = cum_rew / H
 
         # reset all envs back to initial state
@@ -114,11 +144,52 @@ def make_rollout_fn(
         trace_list = torch.stack(trace_list, dim=1)
         info = {
             "trace": trace_list,  # (N, H, n_trace, 3)
+            **mean_info,
         }
 
         return mean_rew, info
 
     return rollout
+
+
+def _compute_weights_impl(
+    rews: torch.Tensor, num_samples: int, temperature: float
+) -> torch.Tensor:
+    """Compute softmax weights from rewards (implementation).
+
+    Args:
+        rews: Rewards, shape (num_samples,)
+        num_samples: Number of samples
+        temperature: Temperature for softmax
+
+    Returns:
+        Weights, shape (num_samples,)
+    """
+    # Handle NaNs and compute weights over N samples
+    nan_mask = torch.isnan(rews) | torch.isinf(rews)
+    rews_min = (
+        rews[~nan_mask].min()
+        if (~nan_mask).any()
+        else torch.tensor(-1000.0, device=rews.device)
+    )
+    rews = torch.where(nan_mask, rews_min, rews)
+
+    # Select top 10% samples for softmax weighting
+    top_k = max(1, int(0.1 * num_samples))
+    top_indices = torch.topk(rews, k=top_k, largest=True).indices
+
+    # Initialize weights as zeros and compute softmax only for top samples
+    weights = torch.zeros_like(rews)
+    top_rews = rews[top_indices]
+    top_rews_normalized = (top_rews - top_rews.mean()) / (top_rews.std() + 1e-2)
+    top_weights = F.softmax(top_rews_normalized / temperature, dim=0)
+    weights[top_indices] = top_weights
+
+    return weights, nan_mask
+
+
+# Compiled version
+_compute_weights_compiled = torch.compile(_compute_weights_impl)
 
 
 def make_optimize_once_fn(
@@ -164,35 +235,24 @@ def make_optimize_once_fn(
         # Use worst-case rewards across DR parameter sets
         rews = min_rew
 
-        # Handle NaNs and compute weights over N samples
-        nan_mask = torch.isnan(rews) | torch.isinf(rews)
-        rews_min = (
-            rews[~nan_mask].min()
-            if (~nan_mask).any()
-            else torch.tensor(-1000.0, device=rews.device)
-        )
+        # Compute weights using compiled or non-compiled version
+        if config.use_torch_compile:
+            weights, nan_mask = _compute_weights_compiled(
+                rews, config.num_samples, config.temperature
+            )
+        else:
+            weights, nan_mask = _compute_weights_impl(
+                rews, config.num_samples, config.temperature
+            )
+
         if nan_mask.any():
             loguru.logger.warning(
                 f"NaNs or infs in rews: {nan_mask.sum()}/{config.num_samples}"
             )
-        rews = torch.where(nan_mask, rews_min, rews)
-
-        # Select top 10% samples for softmax weighting
-        top_k = max(1, int(0.1 * config.num_samples))
-        top_indices = torch.topk(rews, k=top_k, largest=True).indices
-
-        # Initialize weights as zeros and compute softmax only for top samples
-        weights = torch.zeros_like(rews)
-        top_rews = rews[top_indices]
-        top_rews_normalized = (top_rews - top_rews.mean()) / (top_rews.std() + 1e-2)
-        top_weights = F.softmax(top_rews_normalized / config.temperature, dim=0)
-        weights[top_indices] = top_weights
 
         ctrls_mean = (weights[:, None, None] * ctrls_samples).sum(dim=0)
 
-        # process info
-        improvement = rews.max() - rews[0]
-        # down sample rews (N) by selecting topk and uniform samples for visualization
+        # down sample traces by selecting topk and uniform samples for visualization
         n_uni = max(0, min(config.num_trace_uniform_samples, config.num_samples))
         n_topk = max(0, min(config.num_trace_topk_samples, config.num_samples))
         idx_uni = (
@@ -212,12 +272,30 @@ def make_optimize_once_fn(
             else torch.tensor([], dtype=torch.long, device=config.device)
         )
         sel_idx = torch.cat([idx_uni, idx_top], dim=0).long()
-        rews = rews[sel_idx]
+
         # compute info
-        info = {
-            "rew_sample": rews.cpu().numpy(),  # (M,)
-            "improvement": improvement.cpu().numpy(),  # scalar
-        }
+        info = {}
+        for k, v in rollout_info.items():
+            if k not in ["trace", "trace_sample"]:
+                if isinstance(v, torch.Tensor):
+                    v = v.cpu().numpy()
+                if v.ndim == 1:
+                    k_max = k + "_max"
+                    k_min = k + "_min"
+                    k_median = k + "_median"
+                    k_mean = k + "_mean"
+                    info[k_max] = v.max()
+                    info[k_min] = v.min()
+                    info[k_median] = np.median(v)
+                    info[k_mean] = v.mean()
+        # log reward
+        rews_np = rews.cpu().numpy()
+        improvement = rews_np.max() - rews_np[0]
+        info["improvement"] = improvement
+        info["rew_max"] = rews_np.max()
+        info["rew_min"] = rews_np.min()
+        info["rew_median"] = np.median(rews_np)
+        info["rew_mean"] = rews_np.mean()
 
         # Downsample and store trace site positions for selected sample trajectories
         if "trace" in rollout_info:

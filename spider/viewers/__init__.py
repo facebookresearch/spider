@@ -13,16 +13,18 @@ import loguru
 import mujoco
 import mujoco.viewer
 import numpy as np
+import rerun as rr
 
 from spider.config import Config
 from spider.viewers.rerun_viewer import (
     build_and_log_scene,
     init_rerun,
     log_frame,
-    log_reward_samples_by_iter,
+    # log_reward_samples_by_iter,
     log_scene_from_npz,
-    log_stage_improvements,
+    # log_stage_improvements,
     log_traces_from_info,
+    # RerunRealtimeUpdater,
 )
 
 
@@ -100,34 +102,46 @@ def update_viewer(
 
     # update rerun scene
     if "rerun" in config.viewer:
-        if "sim_step" not in info:
-            frame_idx = int(mj_data.time / config.sim_dt)
-        else:
-            frame_idx = info["sim_step"]
         # Per-body transforms
         if mj_data is not None:
             log_frame(
                 mj_data,
-                frame_idx=frame_idx,
-                time_seconds=mj_data.time,
+                sim_time=mj_data.time,
                 viewer_body_entity_and_ids=config.viewer_body_entity_and_ids,
             )
 
         # Traces (any keys starting with 'trace_')
         if "trace_sample" in info:
-            log_traces_from_info(info["trace_sample"], plan_step=frame_idx)
+            log_traces_from_info(info["trace_sample"], sim_time=mj_data.time)
 
-        # Improvements curve
-        if "improvement" in info:
-            log_stage_improvements(info["improvement"], plan_step=frame_idx)
+        # Log scalar metrics (improvement, rew_max, rew_min, rew_median) as continuous time series
+        for k, v in info.items():
+            # skip trace related metrics
+            if "trace" in k:
+                continue
+            if not isinstance(v, np.ndarray):
+                continue
+            # show scalar metrics
+            if v.shape == (config.max_num_iterations,):
+                # Extract metric base name (e.g., "rew" from "rew_max")
+                metric_base = k.rsplit("_", 1)[0] if "_" in k else k
 
-        # Rewards per iteration if provided as a mapping {iter_index: rewards}
-        if "rew_sample" in info:
-            I = int(info["rew_sample"].shape[0])
-            for it in range(I):
-                vals = info["rew_sample"][it]
-                log_reward_samples_by_iter(vals, iter_index=it, plan_step=frame_idx)
-    return
+                for it in range(config.max_num_iterations):
+                    start_sim_time = mj_data.time
+                    end_sim_time = mj_data.time + config.ctrl_dt
+                    plan_time = start_sim_time + (it / config.max_num_iterations) * (
+                        end_sim_time - start_sim_time
+                    )
+                    rr.set_time("sim_time", timestamp=plan_time)
+                    rr.log(f"metrics/{metric_base}/{k}", rr.Scalars([float(v[it])]))
+            # show state metrics
+            if v.shape[0] == config.ctrl_steps and v.ndim == 2:
+                rr.set_time("sim_time", timestamp=mj_data.time)
+                for dim_idx in range(v.shape[1]):
+                    rr.log(
+                        f"metrics/{k}/dim_{dim_idx}",
+                        rr.Scalars([float(v[-1, dim_idx])]),
+                    )
 
 
 def setup_renderer(config: Config, mj_model: mujoco.MjModel):

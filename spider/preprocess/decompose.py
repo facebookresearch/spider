@@ -9,11 +9,13 @@ import json
 import coacd
 import tyro
 import loguru
-from retarget.io import get_mesh_dir
+
+import spider
+from spider.io import get_mesh_dir
 
 
 def main(
-    dataset_dir: str = "../../example_datasets",
+    dataset_dir: str = f"{spider.ROOT}/../example_datasets",
     dataset_name: str = "oakink",
     robot_type: str = "allegro",
     hand_type: str = "bimanual",

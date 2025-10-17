@@ -1,5 +1,4 @@
-"""
-MuJoCo XML Rerun visualizer.
+"""MuJoCo XML Rerun visualizer.
 
 Inputs:
 - MuJoCo XML scene file (MJCF)
@@ -17,20 +16,17 @@ Notes:
 
 from __future__ import annotations
 
-import argparse
 import ast
-import os
-from pathlib import Path
 import time
 import xml.etree.ElementTree as ET
-import tyro
-import loguru
+from pathlib import Path
 
+import loguru
 import mujoco
 import numpy as np
 import rerun as rr
 import trimesh
-
+import tyro
 
 # -----------------------------
 # Trace visualization defaults
@@ -156,7 +152,17 @@ def _get_mesh_group_path(geom_name: str, entity_root: str) -> str:
     Returns:
         Group path like 'mujoco/collision' or 'mujoco/visual'
     """
-    if "collision" in geom_name.lower() or (geom_name.lower().startswith("left_object_") and geom_name.split("_")[-1].isdigit()) or (geom_name.lower().startswith("right_object_") and geom_name.split("_")[-1].isdigit()):
+    if (
+        "collision" in geom_name.lower()
+        or (
+            geom_name.lower().startswith("left_object_")
+            and geom_name.split("_")[-1].isdigit()
+        )
+        or (
+            geom_name.lower().startswith("right_object_")
+            and geom_name.split("_")[-1].isdigit()
+        )
+    ):
         return f"{entity_root}/collision"
     else:
         return f"{entity_root}/visual"
@@ -274,7 +280,7 @@ def build_and_log_scene(
             geom_name = (
                 geom.name
                 if geom.name
-                else f"geom_{abs(hash((body_name, id(geom))))%10_000}"
+                else f"geom_{abs(hash((body_name, id(geom)))) % 10_000}"
             )
 
             # Group ALL geoms by collision vs visual based on name
@@ -329,6 +335,9 @@ def build_and_log_scene(
                         continue
 
                 try:
+                    # DEBUG: check if visual.obj is in name, if so, replace it with cat.glb
+                    # if "visual.obj" in mesh_file.name:
+                    #     mesh_file = mesh_file.parent / "cat.glb"
                     tm = trimesh.load(str(mesh_file), force="mesh")
                 except Exception:
                     loguru.logger.warning(f"Failed to load mesh: {mesh_file}")
@@ -387,9 +396,9 @@ def export_scene_to_npz(
     body_entities: list[str] = []
     body_model_ids: list[int] = []
     geom_names: list[str] = []
-    geom_types: list[int] = (
-        []
-    )  # Store geom types to enable proper grouping in log_scene_from_npz
+    geom_types: list[
+        int
+    ] = []  # Store geom types to enable proper grouping in log_scene_from_npz
     geom_body_index: list[int] = []
     geom_local_pos: list[np.ndarray] = []
     geom_local_quat_xyzw: list[np.ndarray] = []
@@ -412,7 +421,7 @@ def export_scene_to_npz(
             body_model_ids.append(-1)
         for geom in body.geoms:
             gname = (
-                geom.name if geom.name else f"geom_{abs(hash((nm, id(geom))))%10_000}"
+                geom.name if geom.name else f"geom_{abs(hash((nm, id(geom)))) % 10_000}"
             )
             geom_names.append(gname)
             geom_types.append(int(geom.type))  # Store geom type for grouping
@@ -544,7 +553,10 @@ def export_scene_to_npz(
         faces_offsets=np.array(faces_offsets, dtype=np.int64),
         # Backward-compatibility: also store the previous combined field as strings for older loaders
         body_entity_and_ids=np.array(
-            [f"({repr(e)}, {int(i)})" for e, i in zip(body_entities, body_model_ids)],
+            [
+                f"({repr(e)}, {int(i)})"
+                for e, i in zip(body_entities, body_model_ids, strict=False)
+            ],
             dtype="U",
         ),
     )
@@ -571,7 +583,9 @@ def log_scene_from_npz(
     if "body_entities" in data.files and "body_model_ids" in data.files:
         body_entities = _norm_str_array(data["body_entities"])  # type: ignore[index]
         body_model_ids = data["body_model_ids"].astype(int)  # type: ignore[index]
-        body_entity_and_ids = list(zip(body_entities, body_model_ids.tolist()))
+        body_entity_and_ids = list(
+            zip(body_entities, body_model_ids.tolist(), strict=False)
+        )
     else:
         # Legacy path: parse stringified tuples/lists safely
         try:
@@ -683,181 +697,237 @@ def init_rerun(app_name: str = "mujoco_xml_viewer", spawn: bool = False) -> None
         rr.spawn()
 
 
-class RerunRealtimeUpdater:
-    """Realtime logger that updates body transforms each frame from a running MuJoCo model/data.
+# class RerunRealtimeUpdater:
+#     """Realtime logger that updates body transforms each frame from a running MuJoCo model/data.
 
-    Usage:
-        updater = RerunRealtimeUpdater(model, spec, entity_root)
-        updater.log_frame(data, frame_idx=0)  # per simulation step
-    """
+#     Usage:
+#         updater = RerunRealtimeUpdater(model, spec, entity_root)
+#         updater.log_frame(data, frame_idx=0)  # per simulation step
+#     """
 
-    def __init__(
-        self, model: mujoco.MjModel, body_names: list[str], entity_root: str = "mujoco"
-    ) -> None:
-        self._entity_root = entity_root
-        self._body_entity_and_ids: list[tuple[str, int]] = []
-        # Precompute body id mapping using names to align spec ordering with the provided model
-        for body_name in body_names:
-            try:
-                body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, body_name)
-            except Exception:
-                body_id = -1
-            if body_id < 0:
-                loguru.logger.warning(
-                    f"RerunRealtimeUpdater: body '{body_name}' not found in model; skipping"
-                )
-                continue
-            # Track both collision and visual body entities
-            collision_entity = f"{entity_root}/collision/{body_name}"
-            visual_entity = f"{entity_root}/visual/{body_name}"
-            self._body_entity_and_ids.append((collision_entity, body_id))
-            self._body_entity_and_ids.append((visual_entity, body_id))
+#     def __init__(
+#         self, model: mujoco.MjModel, body_names: list[str], entity_root: str = "mujoco"
+#     ) -> None:
+#         self._entity_root = entity_root
+#         self._body_entity_and_ids: list[tuple[str, int]] = []
+#         # Precompute body id mapping using names to align spec ordering with the provided model
+#         for body_name in body_names:
+#             try:
+#                 body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, body_name)
+#             except Exception:
+#                 body_id = -1
+#             if body_id < 0:
+#                 loguru.logger.warning(
+#                     f"RerunRealtimeUpdater: body '{body_name}' not found in model; skipping"
+#                 )
+#                 continue
+#             # Track both collision and visual body entities
+#             collision_entity = f"{entity_root}/collision/{body_name}"
+#             visual_entity = f"{entity_root}/visual/{body_name}"
+#             self._body_entity_and_ids.append((collision_entity, body_id))
+#             self._body_entity_and_ids.append((visual_entity, body_id))
 
-    def log_frame(
-        self,
-        data: mujoco.MjData,
-        frame_idx: int | None = None,
-        time_seconds: float | None = None,
-    ) -> None:
-        if frame_idx is not None:
-            rr.set_time_sequence("frame", int(frame_idx))
-        elif time_seconds is not None:
-            rr.set_time_seconds("time", float(time_seconds))
-        # Log per-body transforms
-        for entity, bid in self._body_entity_and_ids:
-            pos = np.asarray(data.xpos[bid], dtype=np.float32)
-            quat_wxyz = np.asarray(data.xquat[bid], dtype=np.float32)
-            quat_xyzw = _xyzw_from_wxyz(quat_wxyz)
-            rr.log(entity, rr.Transform3D(translation=pos, quaternion=quat_xyzw))
+#     def log_frame(
+#         self,
+#         data: mujoco.MjData,
+#         frame_idx: int | None = None,
+#         time_seconds: float | None = None,
+#     ) -> None:
+#         if frame_idx is not None:
+#             rr.set_time_sequence("frame", int(frame_idx))
+#         elif time_seconds is not None:
+#             rr.set_time_seconds("time", float(time_seconds))
+#         # Log per-body transforms
+#         for entity, bid in self._body_entity_and_ids:
+#             pos = np.asarray(data.xpos[bid], dtype=np.float32)
+#             quat_wxyz = np.asarray(data.xquat[bid], dtype=np.float32)
+#             quat_xyzw = _xyzw_from_wxyz(quat_wxyz)
+#             rr.log(entity, rr.Transform3D(translation=pos, quaternion=quat_xyzw))
 
-    @staticmethod
-    def _generate_iteration_colors(
-        num_iterations: int, base_rgb: list[int]
-    ) -> list[list[int]]:
-        if num_iterations <= 0:
-            return []
-        white = np.array([255, 255, 255], dtype=np.float32)
-        base = np.array(base_rgb, dtype=np.float32)
-        if num_iterations == 1:
-            alphas = [0.35]
-        else:
-            alphas = np.linspace(0.7, 0.0, num_iterations)
-        colors = []
-        for a in alphas:
-            c = np.clip(base * (1.0 - a) + white * a, 0.0, 255.0)
-            colors.append(c.astype(np.uint8).tolist())
-        return colors
+#     @staticmethod
+#     def _generate_iteration_colors(
+#         num_iterations: int, base_rgb: list[int]
+#     ) -> list[list[int]]:
+#         if num_iterations <= 0:
+#             return []
+#         white = np.array([255, 255, 255], dtype=np.float32)
+#         base = np.array(base_rgb, dtype=np.float32)
+#         if num_iterations == 1:
+#             alphas = [0.35]
+#         else:
+#             alphas = np.linspace(0.7, 0.0, num_iterations)
+#         colors = []
+#         for a in alphas:
+#             c = np.clip(base * (1.0 - a) + white * a, 0.0, 255.0)
+#             colors.append(c.astype(np.uint8).tolist())
+#         return colors
 
-    def log_traces_from_info(self, info: dict, plan_step: int | None = None) -> None:
-        """Visualize trace arrays contained in an optimize() info dict.
+#     def log_traces_from_info(self, info: dict, plan_step: int | None = None) -> None:
+#         """Visualize trace arrays contained in an optimize() info dict.
 
-        Expected per-key shapes:
-        - (I, N, P, 3): iterations x traces x points x 3
-        - (N, P, 3): traces x points x 3
-        - (P, 3): single strip
-        Keys must start with 'trace_'. Colors vary by iteration as in offline visualizer.
-        """
-        if plan_step is not None:
-            rr.set_time_sequence("plan", int(plan_step))
-        rr.log(f"{self._entity_root}/traces", rr.Transform3D(), static=True)
-        for name, arr in info.items():
-            if not isinstance(name, str) or not name.startswith("trace_"):
-                continue
-            a = np.asarray(arr)
-            base_rgb = (
-                DEFAULT_OBJECT_TRACE_COLOR
-                if ("object" in name)
-                else DEFAULT_TRACE_COLOR
-            )
-            if a.ndim == 4 and a.shape[-1] == 3:
-                I, N, P, _ = a.shape
-                strips = a.reshape(I * N, P, 3)
-                iter_colors = self._generate_iteration_colors(I, base_rgb)
-                colors = np.repeat(
-                    np.asarray(iter_colors, dtype=np.uint8), repeats=N, axis=0
-                )
-                rr.log(
-                    f"{self._entity_root}/traces/{name}",
-                    rr.LineStrips3D(strips, colors=colors, radii=DEFAULT_TRACE_RADIUS),
-                )
-            elif a.ndim == 3 and a.shape[-1] == 3:
-                rr.log(
-                    f"{self._entity_root}/traces/{name}",
-                    rr.LineStrips3D(a, radii=DEFAULT_TRACE_RADIUS),
-                )
-            elif a.ndim == 2 and a.shape[-1] == 3:
-                rr.log(
-                    f"{self._entity_root}/traces/{name}",
-                    rr.LineStrips3D(a[None, :, :], radii=DEFAULT_TRACE_RADIUS),
-                )
-            else:
-                loguru.logger.warning(
-                    f"RerunRealtimeUpdater.log_traces_from_info: skip '{name}' with shape {a.shape}"
-                )
+#         Expected per-key shapes:
+#         - (I, N, P, 3): iterations x traces x points x 3
+#         - (N, P, 3): traces x points x 3
+#         - (P, 3): single strip
+#         Keys must start with 'trace_'. Colors vary by iteration as in offline visualizer.
+#         """
+#         if plan_step is not None:
+#             rr.set_time_sequence("plan", int(plan_step))
+#         rr.log(f"{self._entity_root}/traces", rr.Transform3D(), static=True)
+#         for name, arr in info.items():
+#             if not isinstance(name, str) or not name.startswith("trace_"):
+#                 continue
+#             a = np.asarray(arr)
+#             base_rgb = (
+#                 DEFAULT_OBJECT_TRACE_COLOR
+#                 if ("object" in name)
+#                 else DEFAULT_TRACE_COLOR
+#             )
+#             if a.ndim == 4 and a.shape[-1] == 3:
+#                 I, N, P, _ = a.shape
+#                 strips = a.reshape(I * N, P, 3)
+#                 iter_colors = self._generate_iteration_colors(I, base_rgb)
+#                 colors = np.repeat(
+#                     np.asarray(iter_colors, dtype=np.uint8), repeats=N, axis=0
+#                 )
+#                 rr.log(
+#                     f"{self._entity_root}/traces/{name}",
+#                     rr.LineStrips3D(strips, colors=colors, radii=DEFAULT_TRACE_RADIUS),
+#                 )
+#             elif a.ndim == 3 and a.shape[-1] == 3:
+#                 rr.log(
+#                     f"{self._entity_root}/traces/{name}",
+#                     rr.LineStrips3D(a, radii=DEFAULT_TRACE_RADIUS),
+#                 )
+#             elif a.ndim == 2 and a.shape[-1] == 3:
+#                 rr.log(
+#                     f"{self._entity_root}/traces/{name}",
+#                     rr.LineStrips3D(a[None, :, :], radii=DEFAULT_TRACE_RADIUS),
+#                 )
+#             else:
+#                 loguru.logger.warning(
+#                     f"RerunRealtimeUpdater.log_traces_from_info: skip '{name}' with shape {a.shape}"
+#                 )
 
-    def log_stage_improvements(
-        self, improvements: np.ndarray | list[float], plan_step: int | None = None
-    ) -> None:
-        """Log per-iteration improvements for a single planning step.
+#     def log_stage_improvements(
+#         self, improvements: np.ndarray | list[float], plan_step: int | None = None
+#     ) -> None:
+#         """Log per-iteration improvements for a single planning step.
 
-        Expects a 1D array-like of length equal to the number of optimization iterations.
-        """
-        if improvements is None:
-            return
-        if plan_step is not None:
-            rr.set_time_sequence("plan", int(plan_step))
-        arr = np.asarray(improvements, dtype=np.float64).reshape(-1)
-        # Log all iterations at once as multiple series columns
-        try:
-            rr.log(
-                f"{self._entity_root}/metrics/improvement_per_iter",
-                rr.Scalars(arr),
-            )
-        except Exception as e:
-            # fall back to older API (mainly for python 3.8, required by isaacgym)
-            rr.log(
-                f"{self._entity_root}/metrics/improvement_per_iter",
-                rr.Scalar(arr),
-            )
+#         Expects a 1D array-like of length equal to the number of optimization iterations.
+#         """
+#         if improvements is None:
+#             return
+#         if plan_step is not None:
+#             rr.set_time_sequence("plan", int(plan_step))
+#         arr = np.asarray(improvements, dtype=np.float64).reshape(-1)
+#         # Log all iterations at once as multiple series columns
+#         try:
+#             rr.log(
+#                 f"{self._entity_root}/metrics/improvement_per_iter",
+#                 rr.Scalars(arr),
+#             )
+#         except Exception as e:
+#             # fall back to older API (mainly for python 3.8, required by isaacgym)
+#             rr.log(
+#                 f"{self._entity_root}/metrics/improvement_per_iter",
+#                 rr.Scalar(arr),
+#             )
 
-    def log_reward_samples_by_iter(
-        self,
-        rewards: np.ndarray | list[float],
-        iter_index: int,
-        plan_step: int | None = None,
-    ) -> None:
-        """Log reward samples for a specific optimization iteration under a dedicated path.
+#     def log_reward_samples_by_iter(
+#         self,
+#         rewards: np.ndarray | list[float],
+#         iter_index: int,
+#         plan_step: int | None = None,
+#     ) -> None:
+#         """Log reward samples for a specific optimization iteration under a dedicated path.
 
-        Path: {entity_root}/metrics/rewards_samples/iter_{iter_index}
-        """
-        if rewards is None:
-            return
-        if plan_step is not None:
-            rr.set_time_sequence("plan", int(plan_step))
-        arr = np.asarray(rewards, dtype=np.float64).reshape(-1)
-        try:
-            rr.log(
-                f"{self._entity_root}/metrics/rewards_samples/iter_{int(iter_index)}",
-                rr.Scalars(arr),
-            )
-        except Exception as e:
-            # fall back to older API (mainly for python 3.8, required by isaacgym)
-            rr.log(
-                f"{self._entity_root}/metrics/rewards_samples/iter_{int(iter_index)}",
-                rr.Scalar(arr),
-            )
+#         Path: {entity_root}/metrics/rewards_samples/iter_{iter_index}
+#         """
+#         if rewards is None:
+#             return
+#         if plan_step is not None:
+#             rr.set_time_sequence("plan", int(plan_step))
+#         arr = np.asarray(rewards, dtype=np.float64).reshape(-1)
+#         try:
+#             rr.log(
+#                 f"{self._entity_root}/metrics/rewards_samples/iter_{int(iter_index)}",
+#                 rr.Scalars(arr),
+#             )
+#         except Exception as e:
+#             # fall back to older API (mainly for python 3.8, required by isaacgym)
+#             rr.log(
+#                 f"{self._entity_root}/metrics/rewards_samples/iter_{int(iter_index)}",
+#                 rr.Scalar(arr),
+#             )
+
+#     def log_metric_statistics(
+#         self,
+#         metric_name: str,
+#         max_vals: np.ndarray,
+#         min_vals: np.ndarray,
+#         median_vals: np.ndarray,
+#         mean_vals: np.ndarray,
+#         p25_vals: np.ndarray | None = None,
+#         p75_vals: np.ndarray | None = None,
+#         iter_index: int | None = None,
+#         plan_step: int | None = None,
+#     ) -> None:
+#         """Log statistics (max, min, median, mean, percentiles) for a metric over time.
+
+#         Args:
+#             metric_name: Name of the metric (e.g., 'qpos_dist', 'qvel_dist')
+#             max_vals: Maximum values across samples at each timestep (H,)
+#             min_vals: Minimum values across samples at each timestep (H,)
+#             median_vals: Median values across samples at each timestep (H,)
+#             mean_vals: Mean values across samples at each timestep (H,)
+#             p25_vals: 25th percentile values (optional)
+#             p75_vals: 75th percentile values (optional)
+#             iter_index: Optimization iteration index (optional)
+#             plan_step: Planning step index (optional)
+#         """
+#         if plan_step is not None:
+#             rr.set_time_sequence("plan", int(plan_step))
+
+#         # Create base path
+#         iter_suffix = f"_iter_{int(iter_index)}" if iter_index is not None else ""
+#         base_path = f"{self._entity_root}/metrics/{metric_name}{iter_suffix}"
+
+#         # Log each statistic as a time series
+#         max_arr = np.asarray(max_vals, dtype=np.float64).reshape(-1)
+#         min_arr = np.asarray(min_vals, dtype=np.float64).reshape(-1)
+#         median_arr = np.asarray(median_vals, dtype=np.float64).reshape(-1)
+#         mean_arr = np.asarray(mean_vals, dtype=np.float64).reshape(-1)
+
+#         # Log each statistic as a time series by setting timestep and logging scalars
+#         p25_arr = (
+#             np.asarray(p25_vals, dtype=np.float64).reshape(-1)
+#             if p25_vals is not None
+#             else None
+#         )
+#         p75_arr = (
+#             np.asarray(p75_vals, dtype=np.float64).reshape(-1)
+#             if p75_vals is not None
+#             else None
+#         )
+
+#         for i in range(len(max_arr)):
+#             rr.set_time_sequence("timestep", i)
+#             rr.log(f"{base_path}/max", rr.Scalars([float(max_arr[i])]))
+#             rr.log(f"{base_path}/min", rr.Scalars([float(min_arr[i])]))
+#             rr.log(f"{base_path}/median", rr.Scalars([float(median_arr[i])]))
+#             rr.log(f"{base_path}/mean", rr.Scalars([float(mean_arr[i])]))
+#             if p25_arr is not None and p75_arr is not None:
+#                 rr.log(f"{base_path}/p25", rr.Scalars([float(p25_arr[i])]))
+#                 rr.log(f"{base_path}/p75", rr.Scalars([float(p75_arr[i])]))
 
 
 def log_frame(
     data: mujoco.MjData,
-    frame_idx: int | None = None,
-    time_seconds: float | None = None,
+    sim_time: float,
     viewer_body_entity_and_ids: list[tuple[str, int]] = [],
 ) -> None:
-    if frame_idx is not None:
-        rr.set_time_sequence("frame", int(frame_idx))
-    elif time_seconds is not None:
-        rr.set_time_seconds("time", float(time_seconds))
+    rr.set_time("sim_time", timestamp=sim_time)
     # Log per-body transforms
     for entity, bid in viewer_body_entity_and_ids:
         pos = np.asarray(data.xpos[bid], dtype=np.float32)
@@ -866,15 +936,14 @@ def log_frame(
         rr.log(entity, rr.Transform3D(translation=pos, quaternion=quat_xyzw))
 
 
-def log_traces_from_info(traces: np.ndarray, plan_step: int | None = None) -> None:
+def log_traces_from_info(traces: np.ndarray, sim_time: float) -> None:
     """Visualize trace arrays contained in an optimize() info dict.
 
     Expected per-key shapes:
     - (I, N, P, K, 3): iterations x traces x points x trace site number x 3
     Keys must start with 'trace_'. Colors vary by iteration as in offline visualizer.
     """
-    if plan_step is not None:
-        rr.set_time_sequence("plan", int(plan_step))
+    rr.set_time("sim_time", timestamp=sim_time)
     rr.log("/traces", rr.Transform3D(), static=True)
     a = np.asarray(traces, dtype=np.float64)
     I, N, P, K, _ = a.shape
@@ -900,66 +969,66 @@ def log_traces_from_info(traces: np.ndarray, plan_step: int | None = None) -> No
     )
 
 
-def log_stage_improvements(
-    improvements: np.ndarray | list[float], plan_step: int | None = None
-) -> None:
-    """Log per-iteration improvements for a single planning step.
+# def log_stage_improvements(
+#     improvements: np.ndarray | list[float], plan_step: int | None = None
+# ) -> None:
+#     """Log per-iteration improvements for a single planning step.
 
-    Expects a 1D array-like of length equal to the number of optimization iterations.
-    """
-    if improvements is None:
-        return
-    if plan_step is not None:
-        rr.set_time_sequence("plan", int(plan_step))
-    arr = np.asarray(improvements, dtype=np.float64).reshape(-1)
-    # Log all iterations at once as multiple series columns
-    try:
-        rr.log(
-            f"/metrics/improvement_per_iter",
-            rr.Scalars(arr),
-        )
-    except Exception as e:
-        # fall back to older API (mainly for python 3.8, required by isaacgym)
-        for i in range(arr.shape[0]):
-            rr.log(
-                f"/metrics/improvement/iter_{i}",
-                rr.Scalar(float(arr[i])),
-            )
-
-
-def log_reward_samples_by_iter(
-    rewards: np.ndarray | list[float],
-    iter_index: int,
-    plan_step: int | None = None,
-) -> None:
-    """Log reward samples for a specific optimization iteration under a dedicated path.
-
-    Path: {entity_root}/metrics/rewards_samples/iter_{iter_index}
-    """
-    if rewards is None:
-        return
-    if plan_step is not None:
-        rr.set_time_sequence("plan", int(plan_step))
-    arr = np.asarray(rewards, dtype=np.float64).reshape(-1)
-    try:
-        rr.log(
-            f"/metrics/rewards_samples/iter_{int(iter_index)}",
-            rr.Scalars(arr),
-        )
-    except Exception as e:
-        # fall back to older API (mainly for python 3.8, required by isaacgym)
-        for i in range(arr.shape[0]):
-            rr.log(
-                f"/metrics/rewards_samples/iter_{int(iter_index)}/sample_{i}",
-                rr.Scalar(float(arr[i])),
-            )
+#     Expects a 1D array-like of length equal to the number of optimization iterations.
+#     """
+#     if improvements is None:
+#         return
+#     if plan_step is not None:
+#         rr.set_time_sequence("plan", int(plan_step))
+#     arr = np.asarray(improvements, dtype=np.float64).reshape(-1)
+#     # Log all iterations at once as multiple series columns
+#     try:
+#         rr.log(
+#             "/metrics/improvement_per_iter",
+#             rr.Scalars(arr),
+#         )
+#     except Exception:
+#         # fall back to older API (mainly for python 3.8, required by isaacgym)
+#         for i in range(arr.shape[0]):
+#             rr.log(
+#                 f"/metrics/improvement/iter_{i}",
+#                 rr.Scalar(float(arr[i])),
+#             )
 
 
-def make_realtime_updater(
-    model: mujoco.MjModel, spec: mujoco.MjSpec, entity_root: str = "mujoco"
-) -> "RerunRealtimeUpdater":
-    """Factory to create a realtime updater for Rerun logging from a live MuJoCo sim."""
-    return RerunRealtimeUpdater(model, spec, entity_root)
+# def log_reward_samples_by_iter(
+#     rewards: np.ndarray | list[float],
+#     iter_index: int,
+#     plan_step: int | None = None,
+# ) -> None:
+#     """Log reward samples for a specific optimization iteration under a dedicated path.
+
+#     Path: {entity_root}/metrics/rewards_samples/iter_{iter_index}
+#     """
+#     if rewards is None:
+#         return
+#     if plan_step is not None:
+#         rr.set_time_sequence("plan", int(plan_step))
+#     arr = np.asarray(rewards, dtype=np.float64).reshape(-1)
+#     try:
+#         rr.log(
+#             f"/metrics/rewards_samples/iter_{int(iter_index)}",
+#             rr.Scalars(arr),
+#         )
+#     except Exception:
+#         # fall back to older API (mainly for python 3.8, required by isaacgym)
+#         for i in range(arr.shape[0]):
+#             rr.log(
+#                 f"/metrics/rewards_samples/iter_{int(iter_index)}/sample_{i}",
+#                 rr.Scalar(float(arr[i])),
+#             )
+
+
+# def make_realtime_updater(
+#     model: mujoco.MjModel, spec: mujoco.MjSpec, entity_root: str = "mujoco"
+# ) -> RerunRealtimeUpdater:
+#     """Factory to create a realtime updater for Rerun logging from a live MuJoCo sim."""
+#     return RerunRealtimeUpdater(model, spec, entity_root)
 
 
 def log_planning_traces(
@@ -1212,7 +1281,6 @@ def main(
     spawn: bool = False,
     save_rrd: bool = False,
 ) -> None:
-
     xml_path = Path(xml).resolve()
     npz_path = Path(npz).resolve()
 
@@ -1232,7 +1300,7 @@ def main(
         xml_path, entity_root=entity_root
     )
     play_trajectory(spec, model, npz_path, entity_root=entity_root, fps=fps)
-    
+
     # save as rrd file
     if save_rrd:
         rr.save(f"{npz_path.with_suffix('.rrd')}")

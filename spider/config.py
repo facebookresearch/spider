@@ -64,6 +64,8 @@ class Config:
     temperature: float = 1.0
     max_num_iterations: int = 16
     improvement_threshold: float = 0.01
+    # Compilation
+    use_torch_compile: bool = True  # use torch.compile for acceleration
     # Noise scheduling
     first_ctrl_noise_scale: float = 0.5
     last_ctrl_noise_scale: float = 1.0
@@ -217,11 +219,12 @@ def process_config(config: Config):
     config.data_path = f"{processed_dir_robot}/trajectory_kinematic.npz"
 
     # get model data
-    model = mujoco.MjModel.from_xml_path(config.model_path)
-    config.nq = model.nq
-    config.nv = model.nv
-    config.nu = model.nu
-    config.npair = model.npair
+    if config.simulator == "mjwp":
+        model = mujoco.MjModel.from_xml_path(config.model_path)
+        config.nq = model.nq
+        config.nv = model.nv
+        config.nu = model.nu
+        config.npair = model.npair
 
     # get noise scale
     config = compute_noise_schedule(config)
@@ -232,8 +235,14 @@ def process_config(config: Config):
 
     # read task info
     task_info_path = f"{processed_dir_robot}/../task_info.json"
-    with open(task_info_path, encoding="utf-8") as f:
-        task_info = json.load(f)
+    try:
+        with open(task_info_path, encoding="utf-8") as f:
+            task_info = json.load(f)
+    except FileNotFoundError:
+        loguru.logger.warning(
+            f"task_info.json not found at {task_info_path}, using default values"
+        )
+        task_info = {}
     if "ref_dt" in task_info:
         config.ref_dt = task_info["ref_dt"]
         loguru.logger.info(f"overriding ref_dt: {config.ref_dt} from task_info.json")
