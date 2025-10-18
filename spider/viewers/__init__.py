@@ -18,6 +18,7 @@ import rerun as rr
 from spider.config import Config
 from spider.viewers.rerun_viewer import (
     build_and_log_scene,
+    build_and_log_scene_from_spec,
     init_rerun,
     log_frame,
     # log_reward_samples_by_iter,
@@ -32,10 +33,15 @@ def setup_viewer(config: Config, mj_model: mujoco.MjModel, mj_data: mujoco.MjDat
     """Setup the viewer for the retargeting."""
     if "rerun" in config.viewer:
         # setup rerun viewer
-        init_rerun(app_name="retarget", spawn=config.rerun_spawn)
-        if mj_model is not None:
-            # check if python <= 3.8, if so, use log_scene_from_npz, this is a temporary fix for python 3.8 required by isaacgym
-            if sys.version_info.major <= 3 and sys.version_info.minor <= 8:
+        init_rerun(app_name="spider", spawn=config.rerun_spawn)
+        if mj_model is not None and config.model_path is not None:
+            # Check if scene is already built (from spec)
+            if config.model_path == "hdmi_scene_from_spec":
+                loguru.logger.info(
+                    "Rerun scene already built from HDMI spec, skipping XML loading"
+                )
+            # check if python <= 3.8, if so, use log_scene_from_npz
+            elif sys.version_info.major <= 3 and sys.version_info.minor <= 8:
                 npz_path = Path(config.model_path).with_suffix(".npz")
                 config.viewer_body_entity_and_ids = log_scene_from_npz(npz_path)
                 loguru.logger.warning(
@@ -50,7 +56,7 @@ def setup_viewer(config: Config, mj_model: mujoco.MjModel, mj_data: mujoco.MjDat
                 )
         else:
             loguru.logger.warning(
-                "viewer is set to rerun, but mj_model is not provided"
+                "Rerun enabled but 3D scene not available (no model_path). Trajectory logging only."
             )
     # create mujoco viewer
     if "mujoco" in config.viewer:
@@ -162,7 +168,10 @@ def render_image(
 ):
     # render sim
     mujoco.mj_kinematics(mj_model, mj_data)
-    renderer.update_scene(mj_data, "front")
+    try:
+        renderer.update_scene(mj_data, "front")
+    except Exception:
+        renderer.update_scene(mj_data, 0)
     sim_image = renderer.render()
     # add text named "sim"
     cv2.putText(
@@ -176,7 +185,10 @@ def render_image(
     )
     # render ref
     mujoco.mj_forward(mj_model, mj_data_ref)
-    renderer.update_scene(mj_data_ref, "front")
+    try:
+        renderer.update_scene(mj_data_ref, "front")
+    except Exception:
+        renderer.update_scene(mj_data_ref, 0)
     ref_image = renderer.render()
     # add text named "ref"
     cv2.putText(

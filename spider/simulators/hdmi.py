@@ -54,7 +54,8 @@ def setup_env(config: Config, ref_data: tuple[torch.Tensor, ...]):
 
     # Override with SPIDER config parameters
     cfg.num_envs = int(config.num_samples)
-    cfg.viewer.headless = "mjlab" not in config.viewer
+    # Disable mjlab viewer if "mjlab" is not in viewer string (e.g., "mujoco-rerun")
+    cfg.viewer.headless = "mjlab" not in config.viewer.lower()
 
     # Set env_spacing to 0 so all environments share the same spatial location
     # This avoids needing to handle position offsets during state synchronization
@@ -496,14 +497,23 @@ def sync_env(config: Config, env):
     return env
 
 
-def get_initial_ctrls(config: Config, env) -> torch.Tensor:
-    """Get full reference control sequence from command manager.
+def get_reference(
+    config: Config, env
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Get full reference motion data (states and controls) from command manager.
 
-    Uses action manager's normalization to convert joint positions to actions.
-    Returns (max_sim_steps + horizon_steps + ctrl_steps, nu) shaped tensor.
+    Returns tuple of:
+        - qpos_ref: (max_sim_steps, nq) shaped tensor with full state including robot and objects
+        - qvel_ref: (max_sim_steps, nv) shaped tensor with full velocities
+        - ctrl_ref: (max_sim_steps, nu) shaped tensor with control actions
     """
     action_manager = env.action_manager
     command_manager = env.command_manager
+
+    # Get full motion data slice
+    motion_data = command_manager.dataset.get_slice(
+        command_manager.motion_ids, 0, steps=config.max_sim_steps
+    )
 
     # Get action joint indices in motion data
     action_indices_motion = [
@@ -511,19 +521,80 @@ def get_initial_ctrls(config: Config, env) -> torch.Tensor:
         for joint_name in action_manager.joint_names
     ]
 
-    # Get full reference joint positions sequence
-    # ref_joint_pos = command_manager.current_ref_motion.joint_pos[
-    #     :, action_indices_motion
-    # ]
-    ref_joint_pos = command_manager.dataset.get_slice(
-        command_manager.motion_ids, 0, steps=config.max_sim_steps
-    ).joint_pos[0, :, action_indices_motion]
+    # Get reference joint positions for control
+    ref_joint_pos = motion_data.joint_pos[0, :, action_indices_motion]
 
     # Convert to actions using action manager's normalization
     # action = (joint_pos - default_joint_pos) / action_scaling
     default_joint_pos = action_manager.default_joint_pos[0, action_manager.joint_ids]
     action_scaling = action_manager.action_scaling
+    ctrl_ref = (ref_joint_pos - default_joint_pos) / action_scaling
 
-    ref_ctrl = (ref_joint_pos - default_joint_pos) / action_scaling
+    # Extract reference qpos and qvel for all bodies
+    # Robot joint positions and velocities
+    robot_joint_pos = motion_data.joint_pos[0]  # (steps, num_joints)
+    robot_joint_vel = motion_data.joint_vel[0]  # (steps, num_joints)
 
-    return ref_ctrl
+    # Root body (pelvis) states
+    root_body_idx = command_manager.root_body_idx_motion
+    root_pos = motion_data.body_pos_w[0, :, root_body_idx, :]  # (steps, 3)
+    root_quat = motion_data.body_quat_w[0, :, root_body_idx, :]  # (steps, 4)
+    root_lin_vel = motion_data.body_lin_vel_w[0, :, root_body_idx, :]  # (steps, 3)
+    root_ang_vel = motion_data.body_ang_vel_w[0, :, root_body_idx, :]  # (steps, 3)
+
+    # Build qpos: [root_pos (3), root_quat (4), joint_pos (n_joints)]
+    qpos_ref = torch.cat([root_pos, root_quat, robot_joint_pos], dim=-1)
+
+    # Build qvel: [root_lin_vel (3), root_ang_vel (3), joint_vel (n_joints)]
+    qvel_ref = torch.cat([root_lin_vel, root_ang_vel, robot_joint_vel], dim=-1)
+
+    # Add object states if available
+    if hasattr(command_manager, "object_body_id_motion"):
+        object_body_idx = command_manager.object_body_id_motion
+        object_pos = motion_data.body_pos_w[0, :, object_body_idx, :]  # (steps, 3)
+        object_quat = motion_data.body_quat_w[0, :, object_body_idx, :]  # (steps, 4)
+        object_lin_vel = motion_data.body_lin_vel_w[
+            0, :, object_body_idx, :
+        ]  # (steps, 3)
+        object_ang_vel = motion_data.body_ang_vel_w[
+            0, :, object_body_idx, :
+        ]  # (steps, 3)
+
+        # Append object states to qpos and qvel
+        qpos_ref = torch.cat([qpos_ref, object_pos, object_quat], dim=-1)
+        qvel_ref = torch.cat([qvel_ref, object_lin_vel, object_ang_vel], dim=-1)
+
+        # Add object joint if available
+        if (
+            hasattr(command_manager, "object_joint_idx_motion")
+            and command_manager.object_joint_idx_motion is not None
+        ):
+            object_joint_pos = motion_data.joint_pos[
+                0, :, command_manager.object_joint_idx_motion
+            ].unsqueeze(-1)  # (steps, 1)
+            object_joint_vel = motion_data.joint_vel[
+                0, :, command_manager.object_joint_idx_motion
+            ].unsqueeze(-1)  # (steps, 1)
+            qpos_ref = torch.cat([qpos_ref, object_joint_pos], dim=-1)
+            qvel_ref = torch.cat([qvel_ref, object_joint_vel], dim=-1)
+
+    # repeat last frame by config.horizon_steps + config.ctrl_steps times to avoid overflow
+    last_frame = qpos_ref[-1:].repeat(config.horizon_steps + config.ctrl_steps, 1)
+    qpos_ref = torch.cat([qpos_ref, last_frame], dim=0)
+    last_frame = qvel_ref[-1:].repeat(config.horizon_steps + config.ctrl_steps, 1) * 0.0
+    qvel_ref = torch.cat([qvel_ref, last_frame], dim=0)
+    last_frame = ctrl_ref[-1:].repeat(config.horizon_steps + config.ctrl_steps, 1)
+    ctrl_ref = torch.cat([ctrl_ref, last_frame], dim=0)
+
+    # verify shape
+    nq_ref = qpos_ref.shape[-1]
+    nq_env = env.sim.mj_model.nq
+    assert nq_ref == nq_env, f"nq_ref: {nq_ref}, nq_env: {nq_env}"
+    nv_ref = qvel_ref.shape[-1]
+    nv_env = env.sim.mj_model.nv
+    assert nv_ref == nv_env, f"nv_ref: {nv_ref}, nv_env: {nv_env}"
+    nu_ref = ctrl_ref.shape[-1]
+    nu_env = config.nu  # NOTE: the action dimension in action manager is different from the one in simulator
+    assert nu_ref == nu_env, f"nu_ref: {nu_ref}, nu_env: {nu_env}"
+
+    return qpos_ref, qvel_ref, ctrl_ref

@@ -105,30 +105,187 @@ def _parse_mesh_assets(xml_path: Path) -> dict[str, dict]:
 # -----------------------------
 
 
-def _trimesh_from_primitive(geom_type: int, size: np.ndarray) -> trimesh.Trimesh | None:
+def _mujoco_mesh_to_trimesh(
+    model: mujoco.MjModel, geom_id: int, verbose: bool = False
+) -> trimesh.Trimesh | None:
+    """Convert a MuJoCo mesh geometry to a trimesh with textures if available.
+
+    Args:
+        model: MuJoCo model object
+        geom_id: Index of the geometry in the model
+        verbose: If True, print debug information during conversion
+
+    Returns:
+        A trimesh object with texture/material applied if available
+    """
+    # Get the mesh ID for this geometry
+    mesh_id = model.geom_dataid[geom_id]
+    if mesh_id < 0:
+        return None
+
+    # Get mesh data ranges from MuJoCo
+    vert_start = int(model.mesh_vertadr[mesh_id])
+    vert_count = int(model.mesh_vertnum[mesh_id])
+    face_start = int(model.mesh_faceadr[mesh_id])
+    face_count = int(model.mesh_facenum[mesh_id])
+
+    # Extract vertices and faces
+    vertices = model.mesh_vert[vert_start : vert_start + vert_count]
+    faces = model.mesh_face[face_start : face_start + face_count]
+
+    # Check if this mesh has texture coordinates
+    texcoord_adr = model.mesh_texcoordadr[mesh_id]
+    texcoord_num = model.mesh_texcoordnum[mesh_id]
+
+    if texcoord_num > 0:
+        # This mesh has UV coordinates
+        if verbose:
+            loguru.logger.debug(f"Mesh has {texcoord_num} texture coordinates")
+
+        # Extract texture coordinates
+        texcoords_flat = model.mesh_texcoord[texcoord_adr : texcoord_adr + texcoord_num * 2]
+        texcoords = texcoords_flat.reshape(-1, 2)
+
+        # Get per-face texture coordinate indices
+        face_texcoord_idx = model.mesh_facetexcoord[
+            face_start * 3 : (face_start + face_count) * 3
+        ].reshape(face_count, 3)
+
+        # Duplicate vertices for each face reference (to support different UVs per face)
+        new_vertices = vertices[faces.flatten()]
+        new_uvs = texcoords[face_texcoord_idx.flatten()]
+        new_faces = np.arange(face_count * 3).reshape(-1, 3)
+
+        # Create the mesh
+        mesh = trimesh.Trimesh(vertices=new_vertices, faces=new_faces, process=False)
+
+        # Handle material and texture
+        matid = model.geom_matid[geom_id]
+        if matid >= 0 and matid < model.nmat:
+            rgba = model.mat_rgba[matid]
+            texid = model.mat_texid[matid]
+
+            if texid >= 0 and texid < model.ntex:
+                # Extract texture data
+                tex_width = model.tex_width[texid]
+                tex_height = model.tex_height[texid]
+                tex_nchannel = model.tex_nchannel[texid]
+                tex_adr = model.tex_adr[texid]
+                tex_size = tex_width * tex_height * tex_nchannel
+                tex_data = model.tex_data[tex_adr : tex_adr + tex_size]
+
+                # Create PIL image based on channels
+                try:
+                    from PIL import Image
+
+                    if tex_nchannel == 1:
+                        tex_array = tex_data.reshape(tex_height, tex_width)
+                        image = Image.fromarray(tex_array.astype(np.uint8), mode="L")
+                    elif tex_nchannel == 3:
+                        tex_array = tex_data.reshape(tex_height, tex_width, 3)
+                        image = Image.fromarray(tex_array.astype(np.uint8), mode="RGB")
+                    elif tex_nchannel == 4:
+                        tex_array = tex_data.reshape(tex_height, tex_width, 4)
+                        image = Image.fromarray(tex_array.astype(np.uint8), mode="RGBA")
+                    else:
+                        image = None
+
+                    if image is not None:
+                        material = trimesh.visual.material.PBRMaterial(
+                            baseColorFactor=rgba, baseColorTexture=image
+                        )
+                        mesh.visual = trimesh.visual.TextureVisuals(uv=new_uvs, material=material)
+                        if verbose:
+                            loguru.logger.debug(
+                                f"Applied texture: {tex_width}x{tex_height}, {tex_nchannel} channels"
+                            )
+                    else:
+                        rgba_255 = (rgba * 255).astype(np.uint8)
+                        mesh.visual = trimesh.visual.ColorVisuals(
+                            vertex_colors=np.tile(rgba_255, (len(new_vertices), 1))
+                        )
+                except ImportError:
+                    loguru.logger.warning("PIL not available, skipping texture loading")
+                    rgba_255 = (rgba * 255).astype(np.uint8)
+                    mesh.visual = trimesh.visual.ColorVisuals(
+                        vertex_colors=np.tile(rgba_255, (len(new_vertices), 1))
+                    )
+            else:
+                # Material but no texture
+                rgba_255 = (rgba * 255).astype(np.uint8)
+                mesh.visual = trimesh.visual.ColorVisuals(
+                    vertex_colors=np.tile(rgba_255, (len(new_vertices), 1))
+                )
+        else:
+            # No material - use default color
+            color = _get_entity_color("mesh_geom")
+            mesh.visual = trimesh.visual.ColorVisuals(
+                vertex_colors=np.tile(color, (len(new_vertices), 1))
+            )
+    else:
+        # No texture coordinates - simpler case
+        mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
+
+        # Apply material color if available
+        matid = model.geom_matid[geom_id]
+        if matid >= 0 and matid < model.nmat:
+            rgba = model.mat_rgba[matid]
+            rgba_255 = (rgba * 255).astype(np.uint8)
+            mesh.visual = trimesh.visual.ColorVisuals(
+                vertex_colors=np.tile(rgba_255, (len(mesh.vertices), 1))
+            )
+        else:
+            # Default color
+            color = _get_entity_color("mesh_geom")
+            mesh.visual = trimesh.visual.ColorVisuals(
+                vertex_colors=np.tile(color, (len(mesh.vertices), 1))
+            )
+
+    return mesh
+
+
+def _trimesh_from_primitive(geom_type: int, size: np.ndarray, rgba: np.ndarray | None = None) -> trimesh.Trimesh | None:
     """Create a trimesh mesh for a MuJoCo primitive geom.
 
     - sphere: size[0] radius
     - capsule: size[0] radius, size[1] half-length (total length = 2*size[1])
     - cylinder: size[0] radius, size[1] half-length
     - box: size[0:3] half extents
+    - plane: creates a large flat box
     """
     t = mujoco.mjtGeom
     if geom_type == t.mjGEOM_SPHERE:
-        return trimesh.creation.icosphere(radius=float(size[0]))
-    if geom_type == t.mjGEOM_CAPSULE:
+        mesh = trimesh.creation.icosphere(radius=float(size[0]), subdivisions=2)
+    elif geom_type == t.mjGEOM_CAPSULE:
         radius = float(size[0])
         length = float(2.0 * size[1])
-        return trimesh.creation.capsule(radius=radius, height=length)
-    if geom_type == t.mjGEOM_CYLINDER:
+        mesh = trimesh.creation.capsule(radius=radius, height=length)
+    elif geom_type == t.mjGEOM_CYLINDER:
         radius = float(size[0])
         height = float(2.0 * size[1])
-        return trimesh.creation.cylinder(radius=radius, height=height)
-    if geom_type == t.mjGEOM_BOX:
+        mesh = trimesh.creation.cylinder(radius=radius, height=height)
+    elif geom_type == t.mjGEOM_BOX:
         # MuJoCo stores half-sizes; trimesh box extents are full lengths
         extents = 2.0 * np.asarray(size[:3], dtype=np.float32)
-        return trimesh.creation.box(extents=extents)
-    return None
+        mesh = trimesh.creation.box(extents=extents)
+    elif geom_type == t.mjGEOM_PLANE:
+        # Create a large flat box for plane visualization
+        mesh = trimesh.creation.box(extents=[20.0, 20.0, 0.01])
+    else:
+        return None
+
+    # Apply material if RGBA is provided
+    if rgba is not None:
+        rgba_arr = np.asarray(rgba, dtype=np.float32)
+        if rgba_arr.size >= 4:
+            material = trimesh.visual.material.PBRMaterial(
+                baseColorFactor=rgba_arr[:4],
+                metallicFactor=0.5,
+                roughnessFactor=0.5,
+            )
+            mesh.visual = trimesh.visual.TextureVisuals(material=material)
+
+    return mesh
 
 
 def _xyzw_from_wxyz(wxyz: np.ndarray) -> np.ndarray:
@@ -214,6 +371,204 @@ def _vertex_colors_from_rgba(
 # -----------------------------
 # Scene construction & logging
 # -----------------------------
+
+
+def build_and_log_scene_from_spec(
+    spec: mujoco.MjSpec,
+    model: mujoco.MjModel,
+    xml_path: Path | None = None,
+    entity_root: str = "mujoco",
+) -> list[tuple[str, int]]:
+    """Build and log scene directly from MjSpec and MjModel (no XML file needed).
+
+    Returns body entity info for subsequent animation.
+    """
+    # Parse mesh assets from XML if available
+    mesh_assets = _parse_mesh_assets(xml_path) if xml_path is not None else {}
+
+    # Give default names to unnamed bodies (but DON'T rename geoms - we'll skip them)
+    body_placeholder_idx = 0
+    for body in spec.bodies[1:]:
+        if not body.name:
+            body.name = f"RERUN_BODY_{body_placeholder_idx}"
+            body_placeholder_idx += 1
+
+    # Create a frame for the world root
+    world_entity = f"{entity_root}/world"
+    rr.log(world_entity, rr.Transform3D(translation=[0.0, 0.0, 0.0]))
+
+    # Create collision and visual group nodes
+    rr.log(f"{entity_root}/collision", rr.Transform3D(), static=True)
+    rr.log(f"{entity_root}/visual", rr.Transform3D(), static=True)
+
+    # Add a grey floor to the ground (in a fixed position)
+    rr.log(
+        f"{entity_root}/floor",
+        rr.Boxes3D(
+            half_sizes=[[0.3, 0.3, 0.001]],
+            colors=DEFAULT_FLOOR_COLOR,
+            fill_mode=3,
+        ),
+        static=True,
+    )
+
+    # Build mapping from spec geom to compiled model geom index
+    # Try two strategies: by name and by (body_id, geom_index_in_body)
+    geom_name_to_id = {}
+    for geom_id in range(model.ngeom):
+        try:
+            geom_name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom_id)
+            if geom_name:
+                geom_name_to_id[geom_name] = geom_id
+        except Exception:
+            pass
+
+    # Build alternative mapping by body and geom index for unnamed geoms
+    geom_by_body_index = {}  # (body_id, geom_index) -> geom_id
+    for geom_id in range(model.ngeom):
+        body_id = model.geom_bodyid[geom_id]
+        # Count how many geoms we've seen for this body so far
+        geom_index = sum(1 for gid in range(geom_id) if model.geom_bodyid[gid] == body_id)
+        geom_by_body_index[(body_id, geom_index)] = geom_id
+
+    # Iterate bodies and geoms
+    body_entity_and_ids = []
+    geom_count = 0
+    mesh_count = 0
+    primitive_count = 0
+    skipped_count = 0
+
+    for body in spec.bodies:  # includes worldbody at index 0
+        body_name = body.name if body.name else f"body_{body.id}"
+
+        # Add visual body entity for position tracking
+        visual_body_entity = f"{entity_root}/visual/{body_name}"
+        body_entity_and_ids.append((visual_body_entity, body.id))
+        rr.log(visual_body_entity, rr.Transform3D())
+
+        for geom_idx, geom in enumerate(body.geoms):
+            geom_count += 1
+            # Generate or use existing geom name
+            if not geom.name:
+                geom_name = f"unnamed_geom_{abs(hash((body_name, id(geom)))) % 10_000}"
+            else:
+                geom_name = geom.name
+
+            # Find compiled model geom for this spec geom
+            # Try by name first, then by body+index
+            model_geom_id = geom_name_to_id.get(geom_name, -1)
+            if model_geom_id < 0:
+                # Try alternative lookup by (body_id, geom_index)
+                model_geom_id = geom_by_body_index.get((body.id, geom_idx), -1)
+
+            # Skip unnamed geoms that don't exist in the compiled model
+            # (these are likely invalid or placeholder geoms)
+            if not geom.name and model_geom_id < 0:
+                skipped_count += 1
+                loguru.logger.debug(f"Skipping unnamed geom {geom_name} (no model geom found)")
+                continue
+
+            # Group ALL geoms by collision vs visual based on name
+            group_path = _get_mesh_group_path(geom_name, entity_root)
+            geom_entity = f"{group_path}/{body_name}/{geom_name}"
+
+            # Log geom's local transform relative to its parent body (use spec's local pose)
+            try:
+                local_pos = np.asarray(geom.pos, dtype=np.float32)
+            except Exception:
+                local_pos = np.zeros(3, dtype=np.float32)
+            try:
+                local_quat_wxyz = np.asarray(geom.quat, dtype=np.float32)
+            except Exception:
+                local_quat_wxyz = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
+            local_quat_xyzw = _xyzw_from_wxyz(local_quat_wxyz)
+            rr.log(
+                geom_entity,
+                rr.Transform3D(translation=local_pos, quaternion=local_quat_xyzw),
+                static=True,
+            )
+
+            # Create mesh using the compiled model for better material/texture support
+            tm = None
+            if geom.type == mujoco.mjtGeom.mjGEOM_MESH:
+                mesh_count += 1
+                # Try using compiled model's mesh data (better texture support)
+                if model_geom_id >= 0:
+                    try:
+                        tm = _mujoco_mesh_to_trimesh(model, model_geom_id, verbose=False)
+                    except Exception as e:
+                        loguru.logger.debug(
+                            f"Failed to convert mesh geom {geom_name} using model: {e}"
+                        )
+
+                # Fallback to XML-based mesh loading
+                if tm is None and xml_path is not None:
+                    mesh_info = None
+                    try:
+                        mesh_name = geom.meshname
+                        if mesh_name in mesh_assets:
+                            mesh_info = mesh_assets[mesh_name]
+                    except Exception as e:
+                        loguru.logger.debug(
+                            f"Failed to get mesh info for {geom.meshname}: {e}"
+                        )
+
+                    if mesh_info is not None:
+                        mesh_file: Path = mesh_info["file"]
+                        if not mesh_file.exists():
+                            alt_path = Path.cwd() / mesh_file.name
+                            if alt_path.exists():
+                                mesh_file = alt_path
+
+                        if mesh_file.exists():
+                            try:
+                                tm = trimesh.load(str(mesh_file), force="mesh")
+                                if isinstance(tm, trimesh.Scene):
+                                    tm = tm.to_mesh()
+                                # Apply asset scale if present
+                                scale = mesh_info.get("scale")
+                                if scale is not None:
+                                    tm.apply_scale(scale)
+                            except Exception as e:
+                                loguru.logger.debug(f"Failed to load mesh {mesh_file}: {e}")
+
+                if tm is None:
+                    # Skip mesh geoms that couldn't be loaded (instead of warning)
+                    continue
+
+            else:
+                primitive_count += 1
+                # Primitives: sphere, box, capsule, cylinder, plane
+                # Get RGBA from compiled model if available
+                rgba = None
+                if model_geom_id >= 0:
+                    try:
+                        rgba = model.geom_rgba[model_geom_id]
+                    except Exception:
+                        pass
+
+                # Use spec geom size (or from compiled model if spec size is invalid)
+                geom_size = geom.size
+                if model_geom_id >= 0:
+                    try:
+                        model_size = model.geom_size[model_geom_id]
+                        if np.any(geom_size == 0) or np.any(np.isnan(geom_size)):
+                            geom_size = model_size
+                    except Exception:
+                        pass
+
+                tm = _trimesh_from_primitive(geom.type, geom_size, rgba=rgba)
+                if tm is None:
+                    continue
+
+            # Log the trimesh to rerun
+            if tm is not None:
+                _log_trimesh_entity(geom_entity, tm, None)
+
+    loguru.logger.info(
+        f"Scene build complete: {geom_count} total geoms ({skipped_count} skipped), {mesh_count} mesh geoms, {primitive_count} primitive geoms"
+    )
+    return body_entity_and_ids
 
 
 def build_and_log_scene(
@@ -314,7 +669,10 @@ def build_and_log_scene(
                     mesh_name = geom.meshname
                     if mesh_name in mesh_assets:
                         mesh_info = mesh_assets[mesh_name]
-                except Exception:
+                except Exception as e:
+                    loguru.logger.warning(
+                        f"Failed to get mesh info for {geom.meshname}: {e}"
+                    )
                     mesh_info = None
 
                 if mesh_info is None:
@@ -697,231 +1055,6 @@ def init_rerun(app_name: str = "mujoco_xml_viewer", spawn: bool = False) -> None
         rr.spawn()
 
 
-# class RerunRealtimeUpdater:
-#     """Realtime logger that updates body transforms each frame from a running MuJoCo model/data.
-
-#     Usage:
-#         updater = RerunRealtimeUpdater(model, spec, entity_root)
-#         updater.log_frame(data, frame_idx=0)  # per simulation step
-#     """
-
-#     def __init__(
-#         self, model: mujoco.MjModel, body_names: list[str], entity_root: str = "mujoco"
-#     ) -> None:
-#         self._entity_root = entity_root
-#         self._body_entity_and_ids: list[tuple[str, int]] = []
-#         # Precompute body id mapping using names to align spec ordering with the provided model
-#         for body_name in body_names:
-#             try:
-#                 body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, body_name)
-#             except Exception:
-#                 body_id = -1
-#             if body_id < 0:
-#                 loguru.logger.warning(
-#                     f"RerunRealtimeUpdater: body '{body_name}' not found in model; skipping"
-#                 )
-#                 continue
-#             # Track both collision and visual body entities
-#             collision_entity = f"{entity_root}/collision/{body_name}"
-#             visual_entity = f"{entity_root}/visual/{body_name}"
-#             self._body_entity_and_ids.append((collision_entity, body_id))
-#             self._body_entity_and_ids.append((visual_entity, body_id))
-
-#     def log_frame(
-#         self,
-#         data: mujoco.MjData,
-#         frame_idx: int | None = None,
-#         time_seconds: float | None = None,
-#     ) -> None:
-#         if frame_idx is not None:
-#             rr.set_time_sequence("frame", int(frame_idx))
-#         elif time_seconds is not None:
-#             rr.set_time_seconds("time", float(time_seconds))
-#         # Log per-body transforms
-#         for entity, bid in self._body_entity_and_ids:
-#             pos = np.asarray(data.xpos[bid], dtype=np.float32)
-#             quat_wxyz = np.asarray(data.xquat[bid], dtype=np.float32)
-#             quat_xyzw = _xyzw_from_wxyz(quat_wxyz)
-#             rr.log(entity, rr.Transform3D(translation=pos, quaternion=quat_xyzw))
-
-#     @staticmethod
-#     def _generate_iteration_colors(
-#         num_iterations: int, base_rgb: list[int]
-#     ) -> list[list[int]]:
-#         if num_iterations <= 0:
-#             return []
-#         white = np.array([255, 255, 255], dtype=np.float32)
-#         base = np.array(base_rgb, dtype=np.float32)
-#         if num_iterations == 1:
-#             alphas = [0.35]
-#         else:
-#             alphas = np.linspace(0.7, 0.0, num_iterations)
-#         colors = []
-#         for a in alphas:
-#             c = np.clip(base * (1.0 - a) + white * a, 0.0, 255.0)
-#             colors.append(c.astype(np.uint8).tolist())
-#         return colors
-
-#     def log_traces_from_info(self, info: dict, plan_step: int | None = None) -> None:
-#         """Visualize trace arrays contained in an optimize() info dict.
-
-#         Expected per-key shapes:
-#         - (I, N, P, 3): iterations x traces x points x 3
-#         - (N, P, 3): traces x points x 3
-#         - (P, 3): single strip
-#         Keys must start with 'trace_'. Colors vary by iteration as in offline visualizer.
-#         """
-#         if plan_step is not None:
-#             rr.set_time_sequence("plan", int(plan_step))
-#         rr.log(f"{self._entity_root}/traces", rr.Transform3D(), static=True)
-#         for name, arr in info.items():
-#             if not isinstance(name, str) or not name.startswith("trace_"):
-#                 continue
-#             a = np.asarray(arr)
-#             base_rgb = (
-#                 DEFAULT_OBJECT_TRACE_COLOR
-#                 if ("object" in name)
-#                 else DEFAULT_TRACE_COLOR
-#             )
-#             if a.ndim == 4 and a.shape[-1] == 3:
-#                 I, N, P, _ = a.shape
-#                 strips = a.reshape(I * N, P, 3)
-#                 iter_colors = self._generate_iteration_colors(I, base_rgb)
-#                 colors = np.repeat(
-#                     np.asarray(iter_colors, dtype=np.uint8), repeats=N, axis=0
-#                 )
-#                 rr.log(
-#                     f"{self._entity_root}/traces/{name}",
-#                     rr.LineStrips3D(strips, colors=colors, radii=DEFAULT_TRACE_RADIUS),
-#                 )
-#             elif a.ndim == 3 and a.shape[-1] == 3:
-#                 rr.log(
-#                     f"{self._entity_root}/traces/{name}",
-#                     rr.LineStrips3D(a, radii=DEFAULT_TRACE_RADIUS),
-#                 )
-#             elif a.ndim == 2 and a.shape[-1] == 3:
-#                 rr.log(
-#                     f"{self._entity_root}/traces/{name}",
-#                     rr.LineStrips3D(a[None, :, :], radii=DEFAULT_TRACE_RADIUS),
-#                 )
-#             else:
-#                 loguru.logger.warning(
-#                     f"RerunRealtimeUpdater.log_traces_from_info: skip '{name}' with shape {a.shape}"
-#                 )
-
-#     def log_stage_improvements(
-#         self, improvements: np.ndarray | list[float], plan_step: int | None = None
-#     ) -> None:
-#         """Log per-iteration improvements for a single planning step.
-
-#         Expects a 1D array-like of length equal to the number of optimization iterations.
-#         """
-#         if improvements is None:
-#             return
-#         if plan_step is not None:
-#             rr.set_time_sequence("plan", int(plan_step))
-#         arr = np.asarray(improvements, dtype=np.float64).reshape(-1)
-#         # Log all iterations at once as multiple series columns
-#         try:
-#             rr.log(
-#                 f"{self._entity_root}/metrics/improvement_per_iter",
-#                 rr.Scalars(arr),
-#             )
-#         except Exception as e:
-#             # fall back to older API (mainly for python 3.8, required by isaacgym)
-#             rr.log(
-#                 f"{self._entity_root}/metrics/improvement_per_iter",
-#                 rr.Scalar(arr),
-#             )
-
-#     def log_reward_samples_by_iter(
-#         self,
-#         rewards: np.ndarray | list[float],
-#         iter_index: int,
-#         plan_step: int | None = None,
-#     ) -> None:
-#         """Log reward samples for a specific optimization iteration under a dedicated path.
-
-#         Path: {entity_root}/metrics/rewards_samples/iter_{iter_index}
-#         """
-#         if rewards is None:
-#             return
-#         if plan_step is not None:
-#             rr.set_time_sequence("plan", int(plan_step))
-#         arr = np.asarray(rewards, dtype=np.float64).reshape(-1)
-#         try:
-#             rr.log(
-#                 f"{self._entity_root}/metrics/rewards_samples/iter_{int(iter_index)}",
-#                 rr.Scalars(arr),
-#             )
-#         except Exception as e:
-#             # fall back to older API (mainly for python 3.8, required by isaacgym)
-#             rr.log(
-#                 f"{self._entity_root}/metrics/rewards_samples/iter_{int(iter_index)}",
-#                 rr.Scalar(arr),
-#             )
-
-#     def log_metric_statistics(
-#         self,
-#         metric_name: str,
-#         max_vals: np.ndarray,
-#         min_vals: np.ndarray,
-#         median_vals: np.ndarray,
-#         mean_vals: np.ndarray,
-#         p25_vals: np.ndarray | None = None,
-#         p75_vals: np.ndarray | None = None,
-#         iter_index: int | None = None,
-#         plan_step: int | None = None,
-#     ) -> None:
-#         """Log statistics (max, min, median, mean, percentiles) for a metric over time.
-
-#         Args:
-#             metric_name: Name of the metric (e.g., 'qpos_dist', 'qvel_dist')
-#             max_vals: Maximum values across samples at each timestep (H,)
-#             min_vals: Minimum values across samples at each timestep (H,)
-#             median_vals: Median values across samples at each timestep (H,)
-#             mean_vals: Mean values across samples at each timestep (H,)
-#             p25_vals: 25th percentile values (optional)
-#             p75_vals: 75th percentile values (optional)
-#             iter_index: Optimization iteration index (optional)
-#             plan_step: Planning step index (optional)
-#         """
-#         if plan_step is not None:
-#             rr.set_time_sequence("plan", int(plan_step))
-
-#         # Create base path
-#         iter_suffix = f"_iter_{int(iter_index)}" if iter_index is not None else ""
-#         base_path = f"{self._entity_root}/metrics/{metric_name}{iter_suffix}"
-
-#         # Log each statistic as a time series
-#         max_arr = np.asarray(max_vals, dtype=np.float64).reshape(-1)
-#         min_arr = np.asarray(min_vals, dtype=np.float64).reshape(-1)
-#         median_arr = np.asarray(median_vals, dtype=np.float64).reshape(-1)
-#         mean_arr = np.asarray(mean_vals, dtype=np.float64).reshape(-1)
-
-#         # Log each statistic as a time series by setting timestep and logging scalars
-#         p25_arr = (
-#             np.asarray(p25_vals, dtype=np.float64).reshape(-1)
-#             if p25_vals is not None
-#             else None
-#         )
-#         p75_arr = (
-#             np.asarray(p75_vals, dtype=np.float64).reshape(-1)
-#             if p75_vals is not None
-#             else None
-#         )
-
-#         for i in range(len(max_arr)):
-#             rr.set_time_sequence("timestep", i)
-#             rr.log(f"{base_path}/max", rr.Scalars([float(max_arr[i])]))
-#             rr.log(f"{base_path}/min", rr.Scalars([float(min_arr[i])]))
-#             rr.log(f"{base_path}/median", rr.Scalars([float(median_arr[i])]))
-#             rr.log(f"{base_path}/mean", rr.Scalars([float(mean_arr[i])]))
-#             if p25_arr is not None and p75_arr is not None:
-#                 rr.log(f"{base_path}/p25", rr.Scalars([float(p25_arr[i])]))
-#                 rr.log(f"{base_path}/p75", rr.Scalars([float(p75_arr[i])]))
-
-
 def log_frame(
     data: mujoco.MjData,
     sim_time: float,
@@ -978,68 +1111,6 @@ def log_traces_from_info(traces: np.ndarray, sim_time: float) -> None:
     )
 
 
-# def log_stage_improvements(
-#     improvements: np.ndarray | list[float], plan_step: int | None = None
-# ) -> None:
-#     """Log per-iteration improvements for a single planning step.
-
-#     Expects a 1D array-like of length equal to the number of optimization iterations.
-#     """
-#     if improvements is None:
-#         return
-#     if plan_step is not None:
-#         rr.set_time_sequence("plan", int(plan_step))
-#     arr = np.asarray(improvements, dtype=np.float64).reshape(-1)
-#     # Log all iterations at once as multiple series columns
-#     try:
-#         rr.log(
-#             "/metrics/improvement_per_iter",
-#             rr.Scalars(arr),
-#         )
-#     except Exception:
-#         # fall back to older API (mainly for python 3.8, required by isaacgym)
-#         for i in range(arr.shape[0]):
-#             rr.log(
-#                 f"/metrics/improvement/iter_{i}",
-#                 rr.Scalar(float(arr[i])),
-#             )
-
-
-# def log_reward_samples_by_iter(
-#     rewards: np.ndarray | list[float],
-#     iter_index: int,
-#     plan_step: int | None = None,
-# ) -> None:
-#     """Log reward samples for a specific optimization iteration under a dedicated path.
-
-#     Path: {entity_root}/metrics/rewards_samples/iter_{iter_index}
-#     """
-#     if rewards is None:
-#         return
-#     if plan_step is not None:
-#         rr.set_time_sequence("plan", int(plan_step))
-#     arr = np.asarray(rewards, dtype=np.float64).reshape(-1)
-#     try:
-#         rr.log(
-#             f"/metrics/rewards_samples/iter_{int(iter_index)}",
-#             rr.Scalars(arr),
-#         )
-#     except Exception:
-#         # fall back to older API (mainly for python 3.8, required by isaacgym)
-#         for i in range(arr.shape[0]):
-#             rr.log(
-#                 f"/metrics/rewards_samples/iter_{int(iter_index)}/sample_{i}",
-#                 rr.Scalar(float(arr[i])),
-#             )
-
-
-# def make_realtime_updater(
-#     model: mujoco.MjModel, spec: mujoco.MjSpec, entity_root: str = "mujoco"
-# ) -> RerunRealtimeUpdater:
-#     """Factory to create a realtime updater for Rerun logging from a live MuJoCo sim."""
-#     return RerunRealtimeUpdater(model, spec, entity_root)
-
-
 def log_planning_traces(
     traces: dict[str, np.ndarray],
     entity_root: str,
@@ -1087,19 +1158,51 @@ def log_planning_traces(
 def _log_trimesh_entity(
     entity_path: str, mesh: trimesh.Trimesh, model_geom: any
 ) -> None:
-    """Log a trimesh as rr.Mesh3D with optional per-vertex colors from geom rgba."""
+    """Log a trimesh as rr.Mesh3D with proper visual data from the mesh."""
     vertex_positions = np.asarray(mesh.vertices, dtype=np.float32)
     triangle_indices = np.asarray(mesh.faces, dtype=np.uint32)
+
+    # Validate mesh has data
+    if len(vertex_positions) == 0 or len(triangle_indices) == 0:
+        loguru.logger.warning(f"Skipping {entity_path}: empty mesh (verts={len(vertex_positions)}, faces={len(triangle_indices)})")
+        return
+
     vertex_normals = (
         np.asarray(mesh.vertex_normals, dtype=np.float32)
         if mesh.vertex_normals is not None
         else None
     )
 
-    # rgba = getattr(model_geom, "rgba", None)
-    # vertex_colors = _vertex_colors_from_rgba(mesh, rgba) if rgba is not None else None
+    # Extract color/texture information from the mesh's visual data
+    vertex_colors = None
+    albedo_factor = None
 
-    entity_color = _get_entity_color(entity_path)
+    # Check if mesh has visual data
+    if hasattr(mesh, 'visual') and mesh.visual is not None:
+        # Try to get vertex colors from the mesh visual
+        if isinstance(mesh.visual, trimesh.visual.ColorVisuals):
+            # ColorVisuals has vertex_colors attribute
+            if hasattr(mesh.visual, 'vertex_colors') and mesh.visual.vertex_colors is not None:
+                vc = np.asarray(mesh.visual.vertex_colors, dtype=np.uint8)
+                if vc.shape[0] == len(vertex_positions):
+                    vertex_colors = vc
+        elif isinstance(mesh.visual, trimesh.visual.TextureVisuals):
+            # TextureVisuals might have a material with baseColorFactor
+            if hasattr(mesh.visual, 'material') and mesh.visual.material is not None:
+                material = mesh.visual.material
+                if hasattr(material, 'baseColorFactor'):
+                    base_color = np.asarray(material.baseColorFactor, dtype=np.float32)
+                    if base_color.size >= 3:
+                        # Convert float [0,1] to uint8 [0,255]
+                        albedo_factor = (base_color[:4] * 255).astype(np.uint8) if base_color.size >= 4 else np.concatenate([base_color[:3] * 255, [255]]).astype(np.uint8)
+                        # Create per-vertex colors
+                        vertex_colors = np.tile(albedo_factor, (len(vertex_positions), 1))
+
+    # Fallback to entity-based default color if no visual data found
+    if vertex_colors is None and albedo_factor is None:
+        entity_color = _get_entity_color(entity_path)
+        vertex_colors = np.tile(entity_color, (len(vertex_positions), 1))
+        albedo_factor = entity_color
 
     rr.log(
         entity_path,
@@ -1107,8 +1210,8 @@ def _log_trimesh_entity(
             vertex_positions=vertex_positions,
             triangle_indices=triangle_indices,
             vertex_normals=vertex_normals,
-            vertex_colors=entity_color,
-            albedo_factor=entity_color,
+            vertex_colors=vertex_colors,
+            albedo_factor=albedo_factor if albedo_factor is not None else vertex_colors[0] if vertex_colors is not None else None,
         ),
         static=True,
     )
