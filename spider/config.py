@@ -148,10 +148,8 @@ def get_noise_scale(config: Config) -> torch.Tensor:
             noise_scale[:, :, half_dof + 6 :] *= config.joint_noise_scale
         elif config.hand_type in ["right", "left"]:
             noise_scale[:, :, 6:] *= config.joint_noise_scale
-    elif config.hand_type in ["CMU", "DanceDB"]:
-        noise_scale *= config.joint_noise_scale
     else:
-        raise ValueError(f"Invalid hand_type: {config.hand_type}")
+        noise_scale *= config.joint_noise_scale
     # repeat to match num_samples; same samples used across DR groups
     noise_scale = noise_scale.repeat(config.num_samples, 1, 1)
     # set first sample to 0
@@ -182,7 +180,10 @@ def compute_steps(config: Config):
 
 def compute_noise_schedule(config: Config) -> Config:
     config.noise_scale = get_noise_scale(config)
-    config.beta_traj = config.final_noise_scale ** (1 / config.max_num_iterations)
+    if config.max_num_iterations > 0:
+        config.beta_traj = config.final_noise_scale ** (1 / config.max_num_iterations)
+    else:
+        config.beta_traj = 1.0
     return config
 
 
@@ -199,9 +200,7 @@ def process_config(config: Config):
         "bimanual": 14,
         "right": 7,
         "left": 7,
-        "CMU": 0,
-        "DanceDB": 0,
-    }[config.hand_type]
+    }.get(config.hand_type, 0)
 
     # resolve processed directories for this trial
     dataset_dir_abs = os.path.abspath(config.dataset_dir)

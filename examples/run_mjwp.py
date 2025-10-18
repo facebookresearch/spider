@@ -45,7 +45,7 @@ from spider.viewers import render_image, setup_renderer, setup_viewer, update_vi
 
 
 def main(config: Config):
-    """Run the DIAL MPC using MuJoCo Warp backend"""
+    """Run the SPIDER using MuJoCo Warp backend"""
     # process config, set defaults and derived fields
     config = process_config(config)
 

@@ -472,88 +472,85 @@ def load_env_params(config: Config, env: MJWPEnv, env_param: dict):
     return env
 
 
+def _broadcast_state(data_wp, num_worlds: int):
+    """Broadcast state from first world/env to all worlds/envs.
+
+    This is a generic function that can be used by both MJWP and HDMI simulators.
+
+    Args:
+        data_wp: MuJoCo Warp data object (mjwarp.Data or wrapped version)
+        num_worlds: Number of parallel worlds/environments
+    """
+    # Core state variables - always try these first
+    qpos0 = wp.to_torch(data_wp.qpos)[:1]
+    qvel0 = wp.to_torch(data_wp.qvel)[:1]
+    time0 = wp.to_torch(data_wp.time)[:1]
+    ctrl0 = wp.to_torch(data_wp.ctrl)[:1]
+
+    # Handle time specially as it might be 1D
+    if time0.dim() == 1:
+        time_repeated = time0.repeat(num_worlds)
+    else:
+        time_repeated = time0.repeat(num_worlds, 1)
+
+    wp.copy(data_wp.qpos, wp.from_torch(qpos0.repeat(num_worlds, 1)))
+    wp.copy(data_wp.qvel, wp.from_torch(qvel0.repeat(num_worlds, 1)))
+    wp.copy(data_wp.time, wp.from_torch(time_repeated))
+    wp.copy(data_wp.ctrl, wp.from_torch(ctrl0.repeat(num_worlds, 1)))
+
+    # Additional core state variables
+    qacc0 = wp.to_torch(data_wp.qacc)[:1]
+    wp.copy(data_wp.qacc, wp.from_torch(qacc0.repeat(num_worlds, 1)))
+
+    act0 = wp.to_torch(data_wp.act)[:1]
+    wp.copy(data_wp.act, wp.from_torch(act0.repeat(num_worlds, 1)))
+
+    act_dot0 = wp.to_torch(data_wp.act_dot)[:1]
+    wp.copy(data_wp.act_dot, wp.from_torch(act_dot0.repeat(num_worlds, 1)))
+
+    # Forces and applied forces
+    qfrc_applied0 = wp.to_torch(data_wp.qfrc_applied)[:1]
+    wp.copy(data_wp.qfrc_applied, wp.from_torch(qfrc_applied0.repeat(num_worlds, 1)))
+
+    xfrc_applied0 = wp.to_torch(data_wp.xfrc_applied)[:1]
+    wp.copy(data_wp.xfrc_applied, wp.from_torch(xfrc_applied0.repeat(num_worlds, 1, 1)))
+
+    # Mocap data
+    mocap_pos0 = wp.to_torch(data_wp.mocap_pos)[:1]
+    wp.copy(data_wp.mocap_pos, wp.from_torch(mocap_pos0.repeat(num_worlds, 1, 1)))
+
+    mocap_quat0 = wp.to_torch(data_wp.mocap_quat)[:1]
+    wp.copy(data_wp.mocap_quat, wp.from_torch(mocap_quat0.repeat(num_worlds, 1, 1)))
+
+    # Spatial transformations
+    xpos0 = wp.to_torch(data_wp.xpos)[:1]
+    wp.copy(data_wp.xpos, wp.from_torch(xpos0.repeat(num_worlds, 1, 1)))
+
+    xquat0 = wp.to_torch(data_wp.xquat)[:1]
+    wp.copy(data_wp.xquat, wp.from_torch(xquat0.repeat(num_worlds, 1, 1)))
+
+    xmat0 = wp.to_torch(data_wp.xmat)[:1]
+    wp.copy(data_wp.xmat, wp.from_torch(xmat0.repeat(num_worlds, 1, 1, 1)))
+
+    # Geometry positions
+    geom_xpos0 = wp.to_torch(data_wp.geom_xpos)[:1]
+    wp.copy(data_wp.geom_xpos, wp.from_torch(geom_xpos0.repeat(num_worlds, 1, 1)))
+
+    geom_xmat0 = wp.to_torch(data_wp.geom_xmat)[:1]
+    wp.copy(data_wp.geom_xmat, wp.from_torch(geom_xmat0.repeat(num_worlds, 1, 1, 1)))
+
+    # Site positions
+    site_xpos0 = wp.to_torch(data_wp.site_xpos)[:1]
+    wp.copy(data_wp.site_xpos, wp.from_torch(site_xpos0.repeat(num_worlds, 1, 1)))
+
+
 def sync_env(config: Config, env: MJWPEnv, mj_data: mujoco.MjData):
     """Broadcast the state from first env to all envs
 
     This function synchronizes states from the first environment to all environments.
     Uses safe copying with buffer size validation to avoid mismatches.
     """
-    # Core state variables - always try these first
-    qpos0 = wp.to_torch(env.data_wp.qpos)[:1]
-    qvel0 = wp.to_torch(env.data_wp.qvel)[:1]
-    time0 = wp.to_torch(env.data_wp.time)[:1]
-    ctrl0 = wp.to_torch(env.data_wp.ctrl)[:1]
-
-    # Handle time specially as it might be 1D
-    if time0.dim() == 1:
-        time_repeated = time0.repeat(env.num_worlds)
-    else:
-        time_repeated = time0.repeat(env.num_worlds, 1)
-
-    wp.copy(env.data_wp.qpos, wp.from_torch(qpos0.repeat(env.num_worlds, 1)))
-    wp.copy(env.data_wp.qvel, wp.from_torch(qvel0.repeat(env.num_worlds, 1)))
-    wp.copy(env.data_wp.time, wp.from_torch(time_repeated))
-    wp.copy(env.data_wp.ctrl, wp.from_torch(ctrl0.repeat(env.num_worlds, 1)))
-
-    # Additional core state variables
-    qacc0 = wp.to_torch(env.data_wp.qacc)[:1]
-    wp.copy(env.data_wp.qacc, wp.from_torch(qacc0.repeat(env.num_worlds, 1)))
-
-    act0 = wp.to_torch(env.data_wp.act)[:1]
-    wp.copy(env.data_wp.act, wp.from_torch(act0.repeat(env.num_worlds, 1)))
-
-    act_dot0 = wp.to_torch(env.data_wp.act_dot)[:1]
-    wp.copy(env.data_wp.act_dot, wp.from_torch(act_dot0.repeat(env.num_worlds, 1)))
-
-    # Forces and applied forces
-    qfrc_applied0 = wp.to_torch(env.data_wp.qfrc_applied)[:1]
-    wp.copy(
-        env.data_wp.qfrc_applied,
-        wp.from_torch(qfrc_applied0.repeat(env.num_worlds, 1)),
-    )
-
-    xfrc_applied0 = wp.to_torch(env.data_wp.xfrc_applied)[:1]
-    wp.copy(
-        env.data_wp.xfrc_applied,
-        wp.from_torch(xfrc_applied0.repeat(env.num_worlds, 1, 1)),
-    )
-
-    # Mocap data
-    mocap_pos0 = wp.to_torch(env.data_wp.mocap_pos)[:1]
-    wp.copy(
-        env.data_wp.mocap_pos, wp.from_torch(mocap_pos0.repeat(env.num_worlds, 1, 1))
-    )
-    mocap_quat0 = wp.to_torch(env.data_wp.mocap_quat)[:1]
-    wp.copy(
-        env.data_wp.mocap_quat,
-        wp.from_torch(mocap_quat0.repeat(env.num_worlds, 1, 1)),
-    )
-
-    # Spatial transformations
-    xpos0 = wp.to_torch(env.data_wp.xpos)[:1]
-    wp.copy(env.data_wp.xpos, wp.from_torch(xpos0.repeat(env.num_worlds, 1, 1)))
-
-    xquat0 = wp.to_torch(env.data_wp.xquat)[:1]
-    wp.copy(env.data_wp.xquat, wp.from_torch(xquat0.repeat(env.num_worlds, 1, 1)))
-
-    xmat0 = wp.to_torch(env.data_wp.xmat)[:1]
-    wp.copy(env.data_wp.xmat, wp.from_torch(xmat0.repeat(env.num_worlds, 1, 1, 1)))
-
-    # Geometry positions
-    geom_xpos0 = wp.to_torch(env.data_wp.geom_xpos)[:1]
-    wp.copy(
-        env.data_wp.geom_xpos, wp.from_torch(geom_xpos0.repeat(env.num_worlds, 1, 1))
-    )
-
-    geom_xmat0 = wp.to_torch(env.data_wp.geom_xmat)[:1]
-    wp.copy(
-        env.data_wp.geom_xmat, wp.from_torch(geom_xmat0.repeat(env.num_worlds, 1, 1, 1))
-    )
-
-    site_xpos0 = wp.to_torch(env.data_wp.site_xpos)[:1]
-    wp.copy(
-        env.data_wp.site_xpos, wp.from_torch(site_xpos0.repeat(env.num_worlds, 1, 1))
-    )
+    _broadcast_state(env.data_wp, env.num_worlds)
 
 
 def sync_env_mujoco(config: Config, env: MJWPEnv, mj_data: mujoco.MjData):

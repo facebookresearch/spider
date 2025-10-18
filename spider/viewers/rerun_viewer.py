@@ -957,10 +957,19 @@ def log_traces_from_info(traces: np.ndarray, sim_time: float) -> None:
 
     for i in range(I):
         for k in range(K):
-            if k < 1:
-                colors[i, :, k, :] = (1 - i / (I - 1)) * white + (i / (I - 1)) * red
+            if I == 1:
+                # When there's only one iteration, use full color
+                if k < 1:
+                    colors[i, :, k, :] = red
+                else:
+                    colors[i, :, k, :] = blue
             else:
-                colors[i, :, k, :] = (1 - i / (I - 1)) * white + (i / (I - 1)) * blue
+                if k < 1:
+                    colors[i, :, k, :] = (1 - i / (I - 1)) * white + (i / (I - 1)) * red
+                else:
+                    colors[i, :, k, :] = (1 - i / (I - 1)) * white + (
+                        i / (I - 1)
+                    ) * blue
     colors = colors.reshape(I * N * K, 3).astype(np.uint8)
     strips = a.reshape(I * N * K, P, 3)
     rr.log(

@@ -31,6 +31,13 @@ conda activate dexmachina
 pip install --ignore-requires-python --no-deps -e .
 ```
 
+## HDMI Workflow
+
+```bash
+# go to hdmi folder, install spider with
+uv pip install --no-deps -e ../spider
+```
+
 ## FAIR Internal Workflows
 
 Montereal:
