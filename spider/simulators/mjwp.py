@@ -16,8 +16,7 @@ import torch
 import warp as wp
 
 # NOTE: this is a hacky solution to make sure domain randomization works for contact margin. Otherwise, it will create a surrogate memory for all worlds and we cannot override each individual world's contact parameters.
-mjwarp._src.io.MAX_WORLDS = 1024
-
+# mjwarp._src.io.MAX_WORLDS = 1024
 from spider.config import Config
 from spider.math import quat_sub
 
@@ -717,6 +716,119 @@ def sync_env_mujoco(config: Config, env: MJWPEnv, mj_data: mujoco.MjData):
             wp.copy(dst_obj, wp.from_torch(tensor))
 
     return env
+
+
+def copy_sample_state(config: Config, env: MJWPEnv, src_indices: torch.Tensor, dst_indices: torch.Tensor):
+    """Copy simulation state from source samples to destination samples.
+
+    Args:
+        config: Config
+        env: MJWPEnv environment
+        src_indices: Tensor of shape (n,) containing source sample indices
+        dst_indices: Tensor of shape (n,) containing destination sample indices
+    """
+    # Convert to numpy for indexing
+    src_idx = src_indices.cpu().numpy()
+    dst_idx = dst_indices.cpu().numpy()
+
+    # Get all state data as torch tensors
+    qpos = wp.to_torch(env.data_wp.qpos)
+    qvel = wp.to_torch(env.data_wp.qvel)
+    qacc = wp.to_torch(env.data_wp.qacc)
+    time_arr = wp.to_torch(env.data_wp.time)
+    ctrl = wp.to_torch(env.data_wp.ctrl)
+    act = wp.to_torch(env.data_wp.act)
+    act_dot = wp.to_torch(env.data_wp.act_dot)
+    qacc_warmstart = wp.to_torch(env.data_wp.qacc_warmstart)
+    qfrc_applied = wp.to_torch(env.data_wp.qfrc_applied)
+    xfrc_applied = wp.to_torch(env.data_wp.xfrc_applied)
+    energy = wp.to_torch(env.data_wp.energy)
+    mocap_pos = wp.to_torch(env.data_wp.mocap_pos)
+    mocap_quat = wp.to_torch(env.data_wp.mocap_quat)
+    xpos = wp.to_torch(env.data_wp.xpos)
+    xquat = wp.to_torch(env.data_wp.xquat)
+    xmat = wp.to_torch(env.data_wp.xmat)
+    xipos = wp.to_torch(env.data_wp.xipos)
+    ximat = wp.to_torch(env.data_wp.ximat)
+    geom_xpos = wp.to_torch(env.data_wp.geom_xpos)
+    geom_xmat = wp.to_torch(env.data_wp.geom_xmat)
+    site_xpos = wp.to_torch(env.data_wp.site_xpos)
+    site_xmat = wp.to_torch(env.data_wp.site_xmat)
+    cacc = wp.to_torch(env.data_wp.cacc)
+    cfrc_int = wp.to_torch(env.data_wp.cfrc_int)
+    cfrc_ext = wp.to_torch(env.data_wp.cfrc_ext)
+    sensordata = wp.to_torch(env.data_wp.sensordata)
+    actuator_length = wp.to_torch(env.data_wp.actuator_length)
+    actuator_velocity = wp.to_torch(env.data_wp.actuator_velocity)
+    actuator_force = wp.to_torch(env.data_wp.actuator_force)
+    ten_length = wp.to_torch(env.data_wp.ten_length)
+    ten_velocity = wp.to_torch(env.data_wp.ten_velocity)
+
+    # Copy from src to dst
+    qpos[dst_idx] = qpos[src_idx]
+    qvel[dst_idx] = qvel[src_idx]
+    qacc[dst_idx] = qacc[src_idx]
+    time_arr[dst_idx] = time_arr[src_idx]
+    ctrl[dst_idx] = ctrl[src_idx]
+    act[dst_idx] = act[src_idx]
+    act_dot[dst_idx] = act_dot[src_idx]
+    qacc_warmstart[dst_idx] = qacc_warmstart[src_idx]
+    qfrc_applied[dst_idx] = qfrc_applied[src_idx]
+    xfrc_applied[dst_idx] = xfrc_applied[src_idx]
+    energy[dst_idx] = energy[src_idx]
+    mocap_pos[dst_idx] = mocap_pos[src_idx]
+    mocap_quat[dst_idx] = mocap_quat[src_idx]
+    xpos[dst_idx] = xpos[src_idx]
+    xquat[dst_idx] = xquat[src_idx]
+    xmat[dst_idx] = xmat[src_idx]
+    xipos[dst_idx] = xipos[src_idx]
+    ximat[dst_idx] = ximat[src_idx]
+    geom_xpos[dst_idx] = geom_xpos[src_idx]
+    geom_xmat[dst_idx] = geom_xmat[src_idx]
+    site_xpos[dst_idx] = site_xpos[src_idx]
+    site_xmat[dst_idx] = site_xmat[src_idx]
+    cacc[dst_idx] = cacc[src_idx]
+    cfrc_int[dst_idx] = cfrc_int[src_idx]
+    cfrc_ext[dst_idx] = cfrc_ext[src_idx]
+    sensordata[dst_idx] = sensordata[src_idx]
+    actuator_length[dst_idx] = actuator_length[src_idx]
+    actuator_velocity[dst_idx] = actuator_velocity[src_idx]
+    actuator_force[dst_idx] = actuator_force[src_idx]
+    ten_length[dst_idx] = ten_length[src_idx]
+    ten_velocity[dst_idx] = ten_velocity[src_idx]
+
+    # Copy back to warp arrays
+    wp.copy(env.data_wp.qpos, wp.from_torch(qpos))
+    wp.copy(env.data_wp.qvel, wp.from_torch(qvel))
+    wp.copy(env.data_wp.qacc, wp.from_torch(qacc))
+    wp.copy(env.data_wp.time, wp.from_torch(time_arr))
+    wp.copy(env.data_wp.ctrl, wp.from_torch(ctrl))
+    wp.copy(env.data_wp.act, wp.from_torch(act))
+    wp.copy(env.data_wp.act_dot, wp.from_torch(act_dot))
+    wp.copy(env.data_wp.qacc_warmstart, wp.from_torch(qacc_warmstart))
+    wp.copy(env.data_wp.qfrc_applied, wp.from_torch(qfrc_applied))
+    wp.copy(env.data_wp.xfrc_applied, wp.from_torch(xfrc_applied))
+    wp.copy(env.data_wp.energy, wp.from_torch(energy))
+    wp.copy(env.data_wp.mocap_pos, wp.from_torch(mocap_pos))
+    wp.copy(env.data_wp.mocap_quat, wp.from_torch(mocap_quat))
+    wp.copy(env.data_wp.xpos, wp.from_torch(xpos))
+    wp.copy(env.data_wp.xquat, wp.from_torch(xquat))
+    wp.copy(env.data_wp.xmat, wp.from_torch(xmat))
+    wp.copy(env.data_wp.xipos, wp.from_torch(xipos))
+    wp.copy(env.data_wp.ximat, wp.from_torch(ximat))
+    wp.copy(env.data_wp.geom_xpos, wp.from_torch(geom_xpos))
+    wp.copy(env.data_wp.geom_xmat, wp.from_torch(geom_xmat))
+    wp.copy(env.data_wp.site_xpos, wp.from_torch(site_xpos))
+    wp.copy(env.data_wp.site_xmat, wp.from_torch(site_xmat))
+    wp.copy(env.data_wp.cacc, wp.from_torch(cacc))
+    wp.copy(env.data_wp.cfrc_int, wp.from_torch(cfrc_int))
+    wp.copy(env.data_wp.cfrc_ext, wp.from_torch(cfrc_ext))
+    wp.copy(env.data_wp.sensordata, wp.from_torch(sensordata))
+    wp.copy(env.data_wp.actuator_length, wp.from_torch(actuator_length))
+    wp.copy(env.data_wp.actuator_velocity, wp.from_torch(actuator_velocity))
+    wp.copy(env.data_wp.actuator_force, wp.from_torch(actuator_force))
+    wp.copy(env.data_wp.ten_length, wp.from_torch(ten_length))
+    wp.copy(env.data_wp.ten_velocity, wp.from_torch(ten_velocity))
 
 
 def _copy_state(src: mjwarp.Data, dst: mjwarp.Data):

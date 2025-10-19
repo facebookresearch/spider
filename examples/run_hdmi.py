@@ -24,6 +24,7 @@ from spider.optimizers.sampling import (
     make_rollout_fn,
 )
 from spider.simulators.hdmi import (
+    copy_sample_state,
     get_reference,
     get_reward,
     get_terminal_reward,
@@ -128,6 +129,7 @@ def main(config: Config):
         get_trace,
         save_env_params,
         load_env_params,
+        copy_sample_state,
     )
     optimize_once = make_optimize_once_fn(rollout)
     optimize = make_optimize_fn(optimize_once)

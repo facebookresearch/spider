@@ -124,11 +124,14 @@ def setup_env(config: Config, ref_data: tuple[torch.Tensor, ...]):
             filtered_rewards[group_name] = group_params
             # filter out reward term which has contact in the name
             for key, value in group_params.items():
-                if "contact" in key.lower():
+                if "vel" in key.lower():
                     del filtered_rewards[group_name][key]
-                if "object" in key.lower():
-                    # scale up object weight by 1.0
-                    filtered_rewards[group_name][key]["weight"] *= 1.0
+                # if "root" in key.lower():
+                #     # scale up root weight by 10.0
+                #     filtered_rewards[group_name][key]["weight"] *= 10.0
+                # if "object_pos" in key.lower():
+                #     # scale up object weight by 10.0
+                #     filtered_rewards[group_name][key]["weight"] *= 3.0
 
     cfg.reward = filtered_rewards
     # redefine tracking reward
@@ -489,6 +492,56 @@ def load_env_params(config: Config, env, env_param: dict):
     For HDMI, we don't use domain randomization, so this is a no-op.
     """
     return env
+
+
+def copy_sample_state(config: Config, env, src_indices: torch.Tensor, dst_indices: torch.Tensor):
+    """Copy simulation state from source samples to destination samples.
+
+    Args:
+        config: Config
+        env: HDMI environment
+        src_indices: Tensor of shape (n,) containing source sample indices
+        dst_indices: Tensor of shape (n,) containing destination sample indices
+    """
+    # Convert to numpy for indexing
+    src_idx = src_indices.cpu().numpy()
+    dst_idx = dst_indices.cpu().numpy()
+
+    # Get all state data as torch tensors from sim.wp_data
+    qpos = wp.to_torch(env.sim.wp_data.qpos)
+    qvel = wp.to_torch(env.sim.wp_data.qvel)
+    qacc = wp.to_torch(env.sim.wp_data.qacc)
+    time_arr = wp.to_torch(env.sim.wp_data.time)
+    ctrl = wp.to_torch(env.sim.wp_data.ctrl)
+    act = wp.to_torch(env.sim.wp_data.act)
+    act_dot = wp.to_torch(env.sim.wp_data.act_dot)
+    qacc_warmstart = wp.to_torch(env.sim.wp_data.qacc_warmstart)
+    qfrc_applied = wp.to_torch(env.sim.wp_data.qfrc_applied)
+    xfrc_applied = wp.to_torch(env.sim.wp_data.xfrc_applied)
+
+    # Copy from src to dst (core state only for efficiency)
+    qpos[dst_idx] = qpos[src_idx]
+    qvel[dst_idx] = qvel[src_idx]
+    qacc[dst_idx] = qacc[src_idx]
+    time_arr[dst_idx] = time_arr[src_idx]
+    ctrl[dst_idx] = ctrl[src_idx]
+    act[dst_idx] = act[src_idx]
+    act_dot[dst_idx] = act_dot[src_idx]
+    qacc_warmstart[dst_idx] = qacc_warmstart[src_idx]
+    qfrc_applied[dst_idx] = qfrc_applied[src_idx]
+    xfrc_applied[dst_idx] = xfrc_applied[src_idx]
+
+    # Copy back to warp arrays
+    wp.copy(env.sim.wp_data.qpos, wp.from_torch(qpos))
+    wp.copy(env.sim.wp_data.qvel, wp.from_torch(qvel))
+    wp.copy(env.sim.wp_data.qacc, wp.from_torch(qacc))
+    wp.copy(env.sim.wp_data.time, wp.from_torch(time_arr))
+    wp.copy(env.sim.wp_data.ctrl, wp.from_torch(ctrl))
+    wp.copy(env.sim.wp_data.act, wp.from_torch(act))
+    wp.copy(env.sim.wp_data.act_dot, wp.from_torch(act_dot))
+    wp.copy(env.sim.wp_data.qacc_warmstart, wp.from_torch(qacc_warmstart))
+    wp.copy(env.sim.wp_data.qfrc_applied, wp.from_torch(qfrc_applied))
+    wp.copy(env.sim.wp_data.xfrc_applied, wp.from_torch(xfrc_applied))
 
 
 def sync_env(config: Config, env):

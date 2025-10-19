@@ -38,6 +38,8 @@ improvement_threshold: 0.02
 improvement_check_steps: 4
 terminal_rew_scale: 1.0
 temperature: 0.1
+num_resamples: 0
+resample_ratio: 0.2
 
 # Domain randomization (not used for HDMI, kept for compatibility)
 num_dr: 1

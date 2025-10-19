@@ -78,6 +78,7 @@ def make_rollout_fn(
     get_trace,
     save_env_params,
     load_env_params,
+    copy_sample_state,
 ):
     def rollout(
         config: Config,
@@ -127,6 +128,29 @@ def make_rollout_fn(
             trace = get_trace(config, env)
             trace_list.append(trace)
             info_list.append(info)
+            # Resampling: replace bad samples with good samples periodically
+            if config.num_resamples > 0 and t < H - 1:
+                if (t + 1) % np.ceil(H // (config.num_resamples + 1)) == 0:
+                    num_resamples = int(config.num_samples * config.resample_ratio)
+
+                    # Get bad samples (lowest rewards)
+                    bad_indices = torch.topk(
+                        cum_rew, k=num_resamples, largest=False
+                    ).indices
+
+                    # Get good samples (highest rewards)
+                    good_indices = torch.topk(
+                        cum_rew, k=num_resamples, largest=True
+                    ).indices
+
+                    # Replace bad sample simulation state with good sample simulation state
+                    copy_sample_state(config, env, good_indices, bad_indices)
+
+                    # Replace bad samples control with good samples (for initial control and current timestep only)
+                    ctrls[bad_indices, :t] = ctrls[good_indices, :t]
+
+                    # Replace bad samples cumulative reward with good samples reward
+                    cum_rew[bad_indices] = cum_rew[good_indices]
         info_combined = {
             k: torch.stack([info[k] for info in info_list], axis=0)
             for k in info_list[0].keys()
@@ -147,7 +171,7 @@ def make_rollout_fn(
             **mean_info,
         }
 
-        return mean_rew, info
+        return ctrls, mean_rew, info
 
     return rollout
 
@@ -224,7 +248,7 @@ def make_optimize_once_fn(
         # domain randomization: pick the minimum reward across all DR parameter sets
         min_rew = torch.full((config.num_samples,), float("inf"), device=config.device)
         for env_param in env_params:
-            rews, rollout_info = rollout(
+            ctrls_samples, rews, rollout_info = rollout(
                 config,
                 env,
                 ctrls_samples,
