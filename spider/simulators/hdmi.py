@@ -127,8 +127,8 @@ def setup_env(config: Config, ref_data: tuple[torch.Tensor, ...]):
                 if "contact" in key.lower():
                     del filtered_rewards[group_name][key]
                 if "object" in key.lower():
-                    # scale up object weight by 3.0
-                    filtered_rewards[group_name][key]["weight"] *= 3.0
+                    # scale up object weight by 1.0
+                    filtered_rewards[group_name][key]["weight"] *= 1.0
 
     cfg.reward = filtered_rewards
     # redefine tracking reward
