@@ -49,6 +49,10 @@ def main(config: Config):
     """Run the SPIDER using HDMI backend."""
     # Setup env (ref_data set to None since environment has built-in reference)
     env = setup_env(config, None)
+    if config.max_sim_steps == -1:
+        config.max_sim_steps = env.max_episode_length
+        loguru.logger.info(f"Max simulation steps set to {config.max_sim_steps}")
+
     config.nu = env.action_spec.shape[-1]
 
     # Process config, set defaults and derived fields
