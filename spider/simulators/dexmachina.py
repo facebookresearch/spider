@@ -627,6 +627,44 @@ def load_env_params(config: Config, env: BaseEnv, env_param: dict):
     return env
 
 
+def copy_sample_state(config: Config, env: BaseEnv, src_indices: torch.Tensor, dst_indices: torch.Tensor):
+    """Copy simulation state from source samples to destination samples.
+
+    Args:
+        config: Config
+        env: BaseEnv environment
+        src_indices: Tensor of shape (n,) containing source sample indices
+        dst_indices: Tensor of shape (n,) containing destination sample indices
+    """
+    # Convert to numpy for indexing
+    src_idx = src_indices.cpu().numpy()
+    dst_idx = dst_indices.cpu().numpy()
+
+    # Get all entities dof positions and velocities
+    obj_dofs_pos = env.objects[env.object_names[0]].entity.get_dofs_position()
+    left_hand_dofs_pos = env.robots["left"].entity.get_dofs_position()
+    right_hand_dofs_pos = env.robots["right"].entity.get_dofs_position()
+    obj_dofs_vel = env.objects[env.object_names[0]].entity.get_dofs_velocity()
+    left_hand_dofs_vel = env.robots["left"].entity.get_dofs_velocity()
+    right_hand_dofs_vel = env.robots["right"].entity.get_dofs_velocity()
+
+    # Copy from src to dst
+    obj_dofs_pos[dst_idx] = obj_dofs_pos[src_idx]
+    left_hand_dofs_pos[dst_idx] = left_hand_dofs_pos[src_idx]
+    right_hand_dofs_pos[dst_idx] = right_hand_dofs_pos[src_idx]
+    obj_dofs_vel[dst_idx] = obj_dofs_vel[src_idx]
+    left_hand_dofs_vel[dst_idx] = left_hand_dofs_vel[src_idx]
+    right_hand_dofs_vel[dst_idx] = right_hand_dofs_vel[src_idx]
+
+    # Set all entities dof positions and velocities
+    env.objects[env.object_names[0]].entity.set_dofs_position(obj_dofs_pos)
+    env.robots["left"].entity.set_dofs_position(left_hand_dofs_pos)
+    env.robots["right"].entity.set_dofs_position(right_hand_dofs_pos)
+    env.objects[env.object_names[0]].entity.set_dofs_velocity(obj_dofs_vel)
+    env.robots["left"].entity.set_dofs_velocity(left_hand_dofs_vel)
+    env.robots["right"].entity.set_dofs_velocity(right_hand_dofs_vel)
+
+
 def sync_env(config: Config, env: BaseEnv, mj_data=None):
     """Broadcast the state from first env to all envs.
 
