@@ -6,7 +6,7 @@ defaults:
 dataset_name: "hdmi"
 robot_type: "g1"
 task: "move_suitcase"  # HDMI task name (e.g., move_suitcase, open_drawer, etc.)
-viewer: "mjlab"  # "mujoco" for visualization, "none" for headless
+viewer: "mujoco-rerun"  # "mujoco" for visualization, "none" for headless
 rerun_spawn: false
 hand_type: "none" # don't use specific noise scaling for hands
 device: "cuda:0"
@@ -15,7 +15,7 @@ joint_noise_scale: 0.2 # disable specific noise scaling for robot
 # Simulation and control parameters
 simulator: hdmi
 sim_dt: 0.02  # mjlab simulation timestep
-ctrl_dt: 0.20  # Control timestep (how often MPC updates)
+ctrl_dt: 0.04  # Control timestep (how often MPC updates)
 knot_dt: 0.20  # Knot point spacing
 ref_dt: 0.02  # Reference trajectory timestep
 horizon: 0.80  # MPC horizon in seconds
@@ -29,13 +29,13 @@ nu: -1  # Number of controls (will be set from environment)
 use_torch_compile: true
 
 # MPC optimization parameters
-max_num_iterations: 128  # Number of iterations per MPC step
+max_num_iterations: 32  # Number of iterations per MPC step
 num_samples: 1024  # Number of parallel samples for sampling
 last_ctrl_noise_scale: 1.0
-first_ctrl_noise_scale: 0.7
+first_ctrl_noise_scale: 1.0
 final_noise_scale: 0.1
 improvement_threshold: 0.02
-improvement_check_steps: 4
+improvement_check_steps: 1
 terminal_rew_scale: 1.0
 temperature: 0.1
 num_resamples: 0

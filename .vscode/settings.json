@@ -28,5 +28,6 @@
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
     "python.terminal.activateEnvironment": true,
-    "python.analysis.autoImportCompletions": true
+    "python.analysis.autoImportCompletions": true,
+    "cursorpyright.analysis.autoImportCompletions": true
 }
