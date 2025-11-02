@@ -1,5 +1,4 @@
-"""
-Process real world data from FAIR Fremont Campus.
+"""Process real world data from FAIR Fremont Campus.
 
 1. Convert mesh to obj
 2. Convert original data to finger tip, object and wrist position and rotation
@@ -15,60 +14,58 @@ Author: Chaoyi Pan
 Date: 2025-07-07
 """
 
-from typing import Optional
+import json
 import os
 import pickle
-from selectors import EpollSelector
-import torch
-import numpy as np
-import mujoco
-import mujoco.viewer
-from scipy.spatial.transform import Rotation as R
-from loop_rate_limiters import RateLimiter
-import tyro
-import pymeshlab
+from contextlib import contextmanager
+
+import imageio
 import loguru
 import matplotlib.pyplot as plt
-import imageio
-from contextlib import contextmanager
-from retarget.io import get_processed_data_dir, get_mesh_dir
-import json
+import mujoco
+import mujoco.viewer
+import numpy as np
+import pymeshlab
+import torch
+import tyro
+from loop_rate_limiters import RateLimiter
+from retarget.io import get_mesh_dir, get_processed_data_dir
+from scipy.spatial.transform import Rotation as R
 
 
 def main(
     dataset_dir: str = "../../example_datasets",
-    hand_type: str = "right",
+    embodiment_type: str = "right",
     data_id: int = 0,
     task: str = "pickcup",
     right_object_name: str = "pickcup",
-    left_object_name: Optional[str] = None,
+    left_object_name: str | None = None,
     show_viewer: bool = True,
     max_steps: int = -1,
     save_video: bool = False,
     filter_sudden_changes: bool = True,
     z_offset: float = 0.14,
 ):
-
     dataset_dir = os.path.abspath(dataset_dir)
     output_dir = get_processed_data_dir(
         dataset_dir=dataset_dir,
         dataset_name="fair_fre",
         robot_type="mano",
-        hand_type=hand_type,
+        embodiment_type=embodiment_type,
         task=task,
         data_id=data_id,
     )
     os.makedirs(output_dir, exist_ok=True)
-    file_path = f"{dataset_dir}/raw/fair_fre/{task}_{hand_type}/{data_id}.pkl"
+    file_path = f"{dataset_dir}/raw/fair_fre/{task}_{embodiment_type}/{data_id}.pkl"
     with open(file_path, "rb") as f:
         data_raw = pickle.load(f)
     data_raw = dict(data_raw)
 
     # read mesh info for this task/hand from info.json
-    info_path = f"{dataset_dir}/raw/fair_fre/{task}_{hand_type}/info.json"
+    info_path = f"{dataset_dir}/raw/fair_fre/{task}_{embodiment_type}/info.json"
     if not os.path.exists(info_path):
         raise FileNotFoundError(f"File {info_path} not found")
-    with open(info_path, "r") as f:
+    with open(info_path) as f:
         info = json.load(f)
     right_mesh_filename = info.get("right_object_mesh", None)
     left_mesh_filename = info.get("left_object_mesh", None)
@@ -175,7 +172,7 @@ def main(
         N = len(data_left["wrist_pos"])
 
     # read right hand data
-    if hand_type in ["right", "bimanual"]:
+    if embodiment_type in ["right", "bimanual"]:
         right_wrist_pos = data_right["wrist_pos"].cpu().numpy()
         right_wrist_rot = data_right["wrist_rot"].cpu().numpy()
         right_mano_joints = data_right["mano_joints"].cpu().numpy()
@@ -187,7 +184,7 @@ def main(
         right_mano_joints = np.zeros((N, 5, 3))
 
     # read left hand data
-    if hand_type in ["left", "bimanual"]:
+    if embodiment_type in ["left", "bimanual"]:
         left_wrist_pos = data_left["wrist_pos"].cpu().numpy()
         left_wrist_rot = data_left["wrist_rot"].cpu().numpy()
         left_mano_joints = data_left["mano_joints"].cpu().numpy()
@@ -203,14 +200,14 @@ def main(
         "task": task,
         "dataset_name": "fair_fre",
         "robot_type": "mano",
-        "hand_type": hand_type,
+        "embodiment_type": embodiment_type,
         "data_id": data_id,
         "right_object_mesh_dir": None,
         "left_object_mesh_dir": None,
     }
 
     # read right object data (mesh copy)
-    if hand_type in ["right", "bimanual"] and right_mesh_filename is not None:
+    if embodiment_type in ["right", "bimanual"] and right_mesh_filename is not None:
         right_obj_mesh_path = f"{dataset_dir}/raw/fair_fre/meshes/{right_mesh_filename}"
         if not os.path.exists(right_obj_mesh_path):
             raise FileNotFoundError(f"File {right_obj_mesh_path} not found")
@@ -229,7 +226,7 @@ def main(
         task_info["right_object_mesh_dir"] = mesh_dir
 
     # read left object data (mesh copy)
-    if hand_type in ["left", "bimanual"] and left_mesh_filename is not None:
+    if embodiment_type in ["left", "bimanual"] and left_mesh_filename is not None:
         left_obj_mesh_path = f"{dataset_dir}/raw/fair_fre/meshes/{left_mesh_filename}"
         if not os.path.exists(left_obj_mesh_path):
             raise FileNotFoundError(f"File {left_obj_mesh_path} not found")
@@ -266,14 +263,14 @@ def main(
     loguru.logger.info(f"Saved task_info to {task_info_path}")
 
     # read right object trajectory
-    if hand_type in ["right", "bimanual"]:
+    if embodiment_type in ["right", "bimanual"]:
         right_obj_trajectory = data_right["obj_trajectory"].cpu().numpy()
     else:
         right_obj_trajectory = np.tile(np.eye(4), (N, 1, 1))
 
     # read left object trajectory
-    if hand_type in ["left", "bimanual"]:
-        if hand_type == "bimanual" and left_mesh_filename is None:
+    if embodiment_type in ["left", "bimanual"]:
+        if embodiment_type == "bimanual" and left_mesh_filename is None:
             # reset left object trajectory to be the same as right object trajectory
             left_obj_trajectory = np.tile(np.eye(4), (N, 1, 1))
         else:
@@ -354,7 +351,7 @@ def main(
         dataset_dir=dataset_dir,
         dataset_name="fair_fre",
         robot_type="mano",
-        hand_type=hand_type,
+        embodiment_type=embodiment_type,
         task=task,
         data_id=data_id,
     )
@@ -390,7 +387,7 @@ def main(
 
     # visualize the data
     # mj_model = mujoco.MjModel.from_xml_path("../assets/mano/empty_scene.xml")
-    mj_spec = mujoco.MjSpec.from_file(f"../assets/mano/empty_scene.xml")
+    mj_spec = mujoco.MjSpec.from_file("../assets/mano/empty_scene.xml")
 
     # add right object to body "right_object"
     object_right_handle = mj_spec.worldbody.add_body(
@@ -415,7 +412,7 @@ def main(
         group=0,
     )
     if (
-        hand_type in ["right", "bimanual"]
+        embodiment_type in ["right", "bimanual"]
         and task_info["right_object_mesh_dir"] is not None
     ):
         mj_spec.add_mesh(
@@ -466,10 +463,10 @@ def main(
         frictionloss=0.0001,
     )
     bimanual_single_object = (
-        hand_type == "bimanual" and task_info["left_object_mesh_dir"] is None
+        embodiment_type == "bimanual" and task_info["left_object_mesh_dir"] is None
     )
     if (
-        hand_type in ["left", "bimanual"]
+        embodiment_type in ["left", "bimanual"]
         and not bimanual_single_object
         and task_info["left_object_mesh_dir"] is not None
     ):
@@ -526,17 +523,17 @@ def main(
         "left_ring_tip",
         "left_pinky_tip",
     ]
-    if hand_type == "right":
+    if embodiment_type == "right":
         fingertips = fingertips_right
         objects = ["right_collision"]
-    elif hand_type == "left":
+    elif embodiment_type == "left":
         fingertips = fingertips_left
         objects = ["left_collision"]
-    elif hand_type == "bimanual":
+    elif embodiment_type == "bimanual":
         fingertips = fingertips_right + fingertips_left
         objects = ["right_collision", "left_collision"]
     else:
-        raise ValueError(f"Invalid hand type: {hand_type}")
+        raise ValueError(f"Invalid hand type: {embodiment_type}")
 
     for fingertip in fingertips:
         for object_name in objects:

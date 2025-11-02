@@ -23,7 +23,7 @@ from spider.io import get_processed_data_dir
 def main(
     dataset_dir: str = f"{spider.ROOT}/../example_datasets",
     dataset_name: str = "oakink",
-    hand_type: str = "bimanual",
+    embodiment_type: str = "bimanual",
     task: str = "pick_spoon_bowl",
     data_id: int = 0,
     show_viewer: bool = True,
@@ -37,7 +37,7 @@ def main(
         dataset_dir=dataset_dir,
         dataset_name=dataset_name,
         robot_type=robot_type,
-        hand_type=hand_type,
+        embodiment_type=embodiment_type,
         task=task,
         data_id=data_id,
     )
@@ -120,7 +120,7 @@ def main(
         left_convex_dir = task_info.get("left_object_convex_dir")
 
         if (
-            hand_type in ["right", "bimanual"]
+            embodiment_type in ["right", "bimanual"]
             and right_convex_dir
             and os.path.isdir(right_convex_dir)
         ):
@@ -140,7 +140,7 @@ def main(
             right_object_files = []
 
         if (
-            hand_type in ["left", "bimanual"]
+            embodiment_type in ["left", "bimanual"]
             and left_convex_dir
             and os.path.isdir(left_convex_dir)
         ):
@@ -160,7 +160,7 @@ def main(
             left_object_files = []
 
     right_object_collision_names = []
-    if hand_type in ["right", "bimanual"]:
+    if embodiment_type in ["right", "bimanual"]:
         for f in right_object_files:
             suffix = f.split(".")[0]
             right_object_handle.add_geom(
@@ -188,7 +188,7 @@ def main(
         )
 
     left_object_collision_names = []
-    if hand_type in ["left", "bimanual"]:
+    if embodiment_type in ["left", "bimanual"]:
         for f in left_object_files:
             suffix = f.split(".")[0]
             left_object_handle.add_geom(
@@ -244,9 +244,9 @@ def main(
         "left_ring_tip",
         "left_pinky_tip",
     ]
-    if hand_type in ["right", "bimanual"]:
+    if embodiment_type in ["right", "bimanual"]:
         hand_collision_names.extend(right_hand_collision_names)
-    if hand_type in ["left", "bimanual"]:
+    if embodiment_type in ["left", "bimanual"]:
         hand_collision_names.extend(left_hand_collision_names)
 
     for object_collision_name in object_collision_names:
@@ -344,7 +344,7 @@ def main(
         cnt = 0
         images = []
         N = len(qpos_wrist_right)
-        Ncontact = 10  # if hand_type == "bimanual" else 5
+        Ncontact = 10  # if embodiment_type == "bimanual" else 5
         contact_seq = np.zeros((N, Ncontact))
         contact_pos = np.zeros((N, Ncontact, 3))
         while gui.is_running():
@@ -394,23 +394,23 @@ def main(
                         contact_seq_smooth[:, i] = False
                         avg_contact_pos[i, :] = np.zeros(3)
 
-                if hand_type == "bimanual":
+                if embodiment_type == "bimanual":
                     contact_right = contact_seq_smooth[:, :5]
                     contact_left = contact_seq_smooth[:, 5:]
                     contact_pos_right = avg_contact_pos[:5, :]
                     contact_pos_left = avg_contact_pos[5:, :]
-                elif hand_type == "right":
+                elif embodiment_type == "right":
                     contact_right = contact_seq_smooth
                     contact_pos_right = avg_contact_pos
                     contact_left = np.zeros_like(contact_right)
                     contact_pos_left = np.zeros_like(contact_pos_right)
-                elif hand_type == "left":
+                elif embodiment_type == "left":
                     contact_left = contact_seq_smooth
                     contact_pos_left = avg_contact_pos
                     contact_right = np.zeros_like(contact_left)
                     contact_pos_right = np.zeros_like(contact_pos_left)
                 else:
-                    raise ValueError(f"Invalid hand type: {hand_type}")
+                    raise ValueError(f"Invalid hand type: {embodiment_type}")
                 # save contact_seq_smooth to npz
                 # save contact info to processed dir for future reference
                 contact_out_path = f"{processed_dir}/trajectory_keypoints.npz"
@@ -441,7 +441,7 @@ def main(
                 rate_limiter.sleep()
 
     if save_video:
-        file_dir = f"../../outputs/mano/{hand_type}/{task}"
+        file_dir = f"../../outputs/mano/{embodiment_type}/{task}"
         os.makedirs(file_dir, exist_ok=True)
         imageio.mimsave(f"{file_dir}/contact.mp4", images, fps=30)
         loguru.logger.info(f"Saved video to {file_dir}/contact.mp4")

@@ -167,7 +167,7 @@ def render_image(
     mj_data_ref: mujoco.MjData,
 ):
     # render sim
-    mujoco.mj_kinematics(mj_model, mj_data)
+    mujoco.mj_forward(mj_model, mj_data)
     try:
         renderer.update_scene(mj_data, "front")
     except Exception:

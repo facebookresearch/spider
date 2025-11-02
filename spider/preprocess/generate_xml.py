@@ -16,7 +16,7 @@ def main(
     dataset_dir: str = f"{ROOT}/../example_datasets",
     dataset_name: str = "oakink",
     robot_type: str = "allegro",
-    hand_type: str = "bimanual",
+    embodiment_type: str = "bimanual",
     task: str = "pick_spoon_bowl",
     data_id: int = 0,
     hand_floor_collision: bool = False,
@@ -30,17 +30,19 @@ def main(
         dataset_dir=dataset_dir,
         dataset_name=dataset_name,
         robot_type=robot_type,
-        hand_type=hand_type,
+        embodiment_type=embodiment_type,
         task=task,
         data_id=data_id,
     )
     os.makedirs(processed_dir, exist_ok=True)
 
-    # choose robot XML based on hand_type
+    # choose robot XML based on embodiment_type
     robots_assets_dir = (
         f"{dataset_dir}/processed/{dataset_name}/assets/robots/{robot_type}"
     )
-    robot_xml_name = "bimanual.xml" if hand_type == "bimanual" else f"{hand_type}.xml"
+    robot_xml_name = (
+        "bimanual.xml" if embodiment_type == "bimanual" else f"{embodiment_type}.xml"
+    )
     robot_xml_path = f"{robots_assets_dir}/{robot_xml_name}"
     if not os.path.exists(robot_xml_path):
         raise FileNotFoundError(f"Robot XML not found: {robot_xml_path}")
@@ -81,7 +83,7 @@ def main(
         dataset_dir=dataset_dir,
         dataset_name=dataset_name,
         robot_type="mano",
-        hand_type=hand_type,
+        embodiment_type=embodiment_type,
         task=task,
         data_id=data_id,
     )
@@ -138,7 +140,7 @@ def main(
     )
 
     # add floor
-    if hand_type in ["right", "bimanual"]:
+    if embodiment_type in ["right", "bimanual"]:
         material_name = "right_groundplane"
     else:
         material_name = "left_groundplane"
@@ -162,7 +164,7 @@ def main(
 
     # Right object meshes
     if (
-        hand_type in ["right", "bimanual"]
+        embodiment_type in ["right", "bimanual"]
         and right_convex_dir
         and os.path.isdir(right_convex_dir)
     ):
@@ -179,7 +181,7 @@ def main(
 
     # Left object meshes
     if (
-        hand_type in ["left", "bimanual"]
+        embodiment_type in ["left", "bimanual"]
         and left_convex_dir
         and os.path.isdir(left_convex_dir)
     ):
@@ -198,14 +200,14 @@ def main(
     right_visual_file = f"{right_mesh_dir}/visual.obj" if right_mesh_dir else None
     left_visual_file = f"{left_mesh_dir}/visual.obj" if left_mesh_dir else None
     if (
-        hand_type in ["right", "bimanual"]
+        embodiment_type in ["right", "bimanual"]
         and right_visual_file
         and os.path.exists(right_visual_file)
     ):
         file_rel_to_meshdir = os.path.relpath(right_visual_file, assets_root_dir)
         mj_spec.add_mesh(name="right_visual", file=file_rel_to_meshdir)
     if (
-        hand_type in ["left", "bimanual"]
+        embodiment_type in ["left", "bimanual"]
         and left_visual_file
         and os.path.exists(left_visual_file)
     ):
@@ -214,7 +216,7 @@ def main(
 
     # add object to model
     right_object_collision_names = []
-    if hand_type in ["right", "bimanual"]:
+    if embodiment_type in ["right", "bimanual"]:
         right_object_handle = mj_spec.worldbody.add_body(
             name="right_object",
             mocap=False,
@@ -315,7 +317,7 @@ def main(
             )
 
     left_object_collision_names = []
-    if hand_type in ["left", "bimanual"]:
+    if embodiment_type in ["left", "bimanual"]:
         left_object_handle = mj_spec.worldbody.add_body(
             name="left_object",
             mocap=False,
@@ -448,7 +450,7 @@ def main(
         geom = mj_spec.geoms[geom_id]
         if geom.name.startswith("collision_hand_"):
             hand_collision_names.append(geom.name)
-    # if hand_type in ["right", "bimanual"]:
+    # if embodiment_type in ["right", "bimanual"]:
     #     hand_collision_names.extend(
     #         [
     #             "right_palm_collision",
@@ -468,7 +470,7 @@ def main(
     #             "right_pinky_collision",
     #         ]
     #     )
-    # if hand_type in ["left", "bimanual"]:
+    # if embodiment_type in ["left", "bimanual"]:
     #     hand_collision_names.extend(
     #         [
     #             "left_palm_collision",
@@ -491,22 +493,22 @@ def main(
     hand_collision_names.append("floor")
 
     object_names = []
-    if hand_type in ["left", "bimanual"]:
+    if embodiment_type in ["left", "bimanual"]:
         object_names.append("left_object")
-    if hand_type in ["right", "bimanual"]:
+    if embodiment_type in ["right", "bimanual"]:
         object_names.append("right_object")
 
     # if robot_type in ["allegro", "metahand"]:
     #     # remove pinky collision
-    #     if hand_type == "right":
+    #     if embodiment_type == "right":
     #         hand_collision_names.remove("right_pinky_collision")
-    #     elif hand_type == "left":
+    #     elif embodiment_type == "left":
     #         hand_collision_names.remove("left_pinky_collision")
-    #     elif hand_type == "bimanual":
+    #     elif embodiment_type == "bimanual":
     #         hand_collision_names.remove("right_pinky_collision")
     #         hand_collision_names.remove("left_pinky_collision")
     #     else:
-    #         raise ValueError(f"Invalid hand type: {hand_type}")
+    #         raise ValueError(f"Invalid hand type: {embodiment_type}")
     contact_cnt = 0
 
     # hand <-> object collision
@@ -534,7 +536,7 @@ def main(
 
     # object <-> object collision
     if (
-        hand_type == "bimanual"
+        embodiment_type == "bimanual"
         and len(right_object_collision_names) > 0
         and len(left_object_collision_names) > 0
     ):
@@ -567,7 +569,7 @@ def main(
         if "0" in collision_name:  # currently only add finger tip collision
             # hand <-> hand collision
             hand_side = collision_name.split("_")[2]
-            if hand_type == "bimanual":
+            if embodiment_type == "bimanual":
                 another_hand_side = "right" if hand_side == "left" else "left"
                 for another_collision_name in hand_collision_names:
                     if (
@@ -619,9 +621,9 @@ def main(
                     contact_cnt += 1
 
     # sides = []
-    # if hand_type in ["right", "bimanual"]:
+    # if embodiment_type in ["right", "bimanual"]:
     #     sides.append("right")
-    # if hand_type in ["left", "bimanual"]:
+    # if embodiment_type in ["left", "bimanual"]:
     #     sides.append("left")
     # for side in sides:
     #     if f"{side}_thumb_collision" in hand_collision_names:
@@ -644,7 +646,7 @@ def main(
     #                 condim=3,
     #             )
     # hand <-> hand collision
-    # if hand_type == "bimanual":
+    # if embodiment_type == "bimanual":
     #     for finger_name in ["thumb", "index", "index_intermediate"]:
     #         mj_spec.add_pair(
     #             name=f"left_{finger_name}_collision_right_{finger_name}_collision",

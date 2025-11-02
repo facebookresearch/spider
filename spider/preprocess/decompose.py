@@ -4,45 +4,43 @@ except ModuleNotFoundError:
     print("trimesh is required. Please install with `pip install trimesh`")
     exit(1)
 
-import os
 import json
+import os
+
 import coacd
-import tyro
 import loguru
+import tyro
 
 import spider
-from spider.io import get_mesh_dir
 
 
 def main(
     dataset_dir: str = f"{spider.ROOT}/../example_datasets",
     dataset_name: str = "oakink",
     robot_type: str = "allegro",
-    hand_type: str = "bimanual",
+    embodiment_type: str = "bimanual",
     task: str = "pick_spoon_bowl",
     data_id: int = 0,
 ):
     dataset_dir = os.path.abspath(dataset_dir)
-    if hand_type == "right":
+    if embodiment_type == "right":
         hands = ["right"]
-    elif hand_type == "left":
+    elif embodiment_type == "left":
         hands = ["left"]
-    elif hand_type == "bimanual":
+    elif embodiment_type == "bimanual":
         hands = ["right", "left"]
     else:
-        raise ValueError(f"Invalid hand type: {hand_type}")
+        raise ValueError(f"Invalid hand type: {embodiment_type}")
 
     # load task info produced during dataset preprocessing
-    processed_dir = (
-        f"{dataset_dir}/processed/{dataset_name}/mano/{hand_type}/{task}/{data_id}"
-    )
+    processed_dir = f"{dataset_dir}/processed/{dataset_name}/mano/{embodiment_type}/{task}/{data_id}"
     task_info_path = f"{processed_dir}/../task_info.json"
     if not os.path.exists(task_info_path):
         loguru.logger.error(
             f"Missing task_info at {task_info_path}. Run dataset preprocessing first."
         )
         return
-    with open(task_info_path, "r") as f:
+    with open(task_info_path) as f:
         task_info = json.load(f)
 
     for hand in hands:

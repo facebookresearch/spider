@@ -23,6 +23,10 @@ Run MJWP on a processed trial:
 uv run examples/run_mjwp.py
 ```
 
+## Native Workflow
+
+- supports dexterous hand and humanoid robot retargeting
+
 ## DexMachina Workflow
 
 ```bash
@@ -45,7 +49,7 @@ uv pip install --no-deps -e ../spider
 Montereal:
 
 ```bash
-# put data in example_datasets/raw/fair_mon/{task}_{hand_type}/{data_id}.pkl
+# put data in example_datasets/raw/fair_mon/{task}_{embodiment_type}/{data_id}.pkl
 # e.g. example_datasets/raw/fair_mon/cat_right/0.pkl
 TASK=coke
 HAND_TYPE=right

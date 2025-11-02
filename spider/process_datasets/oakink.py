@@ -1,5 +1,4 @@
-"""
-Process Oakink data (preprocessed by maniptrans).
+"""Process Oakink data (preprocessed by maniptrans).
 
 Process:
 1. Convert mesh to obj
@@ -15,25 +14,23 @@ Author: Chaoyi Pan
 Date: 2025-07-07
 """
 
-import torch
+import io
+import json
 import os
 import pickle
-import io
-import numpy as np
+from contextlib import contextmanager
+
+import loguru
 import mujoco
 import mujoco.viewer
-from scipy.spatial.transform import Rotation as R
-from loop_rate_limiters import RateLimiter
-import tyro
+import numpy as np
 import pymeshlab
-import loguru
-import matplotlib.pyplot as plt
-from contextlib import contextmanager
-import json
+import torch
+import tyro
+from loop_rate_limiters import RateLimiter
+from scipy.spatial.transform import Rotation as R
 
-
-import spider
-from spider.io import get_processed_data_dir, get_mesh_dir
+from spider.io import get_mesh_dir, get_processed_data_dir
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
@@ -48,7 +45,7 @@ class CPUUnpickler(pickle.Unpickler):
 
 def main(
     dataset_dir: str = "../../example_datasets",
-    hand_type: str = "bimanual",
+    embodiment_type: str = "bimanual",
     task: str = "pick_spoon_bowl",
     show_viewer: bool = True,
     save_video: bool = False,
@@ -56,12 +53,12 @@ def main(
 ):
     # path related
     dataset_dir = os.path.abspath(dataset_dir)
-    file_path = f"{dataset_dir}/raw/oakink/{task}_{hand_type}.pkl"
+    file_path = f"{dataset_dir}/raw/oakink/{task}_{embodiment_type}.pkl"
     output_dir = get_processed_data_dir(
         dataset_dir=dataset_dir,
         dataset_name="oakink",
         robot_type="mano",
-        hand_type=hand_type,
+        embodiment_type=embodiment_type,
         task=task,
         data_id=0,
     )
@@ -72,7 +69,7 @@ def main(
         "task": task,
         "dataset_name": "oakink",
         "robot_type": "mano",
-        "hand_type": hand_type,
+        "embodiment_type": embodiment_type,
         "data_id": 0,
         "right_object_mesh_dir": None,
         "left_object_mesh_dir": None,
@@ -89,7 +86,7 @@ def main(
         N = len(data_left["wrist_pos"])
 
     # read right hand data
-    if hand_type in ["right", "bimanual"]:
+    if embodiment_type in ["right", "bimanual"]:
         right_wrist_pos = data_right["wrist_pos"].cpu().numpy()
         right_wrist_rot = data_right["wrist_rot"].cpu().numpy()
         right_mano_joints = data_right["mano_joints"].cpu().numpy()
@@ -101,7 +98,7 @@ def main(
         right_mano_joints = np.zeros((N, 5, 3))
 
     # read left hand data
-    if hand_type in ["left", "bimanual"]:
+    if embodiment_type in ["left", "bimanual"]:
         left_wrist_pos = data_left["wrist_pos"].cpu().numpy()
         left_wrist_rot = data_left["wrist_rot"].cpu().numpy()
         left_mano_joints = data_left["mano_joints"].cpu().numpy()
@@ -113,7 +110,7 @@ def main(
         left_mano_joints = np.zeros((N, 5, 3))
 
     # read right object data
-    if hand_type in ["right", "bimanual"]:
+    if embodiment_type in ["right", "bimanual"]:
         right_obj_mesh_path = data_right["obj_mesh_path"][0]
         right_obj_mesh_name = right_obj_mesh_path.split("align_ds/")[1]
         right_obj_mesh_path = f"{dataset_dir}/raw/oakink/meshes/{right_obj_mesh_name}"
@@ -136,14 +133,14 @@ def main(
         task_info["right_object_mesh_dir"] = mesh_dir
 
     # read left object data
-    if hand_type in ["left", "bimanual"]:
+    if embodiment_type in ["left", "bimanual"]:
         left_obj_mesh_path = data_left["obj_mesh_path"][0]
         left_obj_mesh_name = left_obj_mesh_path.split("align_ds/")[1]
         left_obj_mesh_path = f"{dataset_dir}/raw/oakink/meshes/{left_obj_mesh_name}"
         left_obj_mesh_name = left_obj_mesh_name.split("/")[0]
         if left_obj_mesh_name == right_obj_mesh_name:
             loguru.logger.info(
-                f"Left and right object mesh paths are the same; setting left object mesh directory to None."
+                "Left and right object mesh paths are the same; setting left object mesh directory to None."
             )
             task_info["left_object_mesh_dir"] = None
         else:
@@ -170,14 +167,14 @@ def main(
     loguru.logger.info(f"Saved task_info to {task_info_path}")
 
     # read right object trajectory
-    if hand_type in ["right", "bimanual"]:
+    if embodiment_type in ["right", "bimanual"]:
         right_obj_trajectory = data_right["obj_trajectory"].cpu().numpy()
     else:
         right_obj_trajectory = np.tile(np.eye(4), (N, 1, 1))
 
     # read left object trajectory
-    if hand_type in ["left", "bimanual"]:
-        if hand_type == "bimanual" and left_obj_mesh_path == right_obj_mesh_path:
+    if embodiment_type in ["left", "bimanual"]:
+        if embodiment_type == "bimanual" and left_obj_mesh_path == right_obj_mesh_path:
             # reset left object trajectory to be the same as right object trajectory
             left_obj_trajectory = np.tile(np.eye(4), (N, 1, 1))
         else:
@@ -286,7 +283,7 @@ def main(
         group=0,
     )
 
-    if hand_type in ["right", "bimanual"]:
+    if embodiment_type in ["right", "bimanual"]:
         mj_spec.add_mesh(
             name="right_object",
             file=f"{task_info['right_object_mesh_dir']}/visual.obj",
@@ -314,7 +311,7 @@ def main(
         group=0,
     )
     if (
-        hand_type in ["left", "bimanual"]
+        embodiment_type in ["left", "bimanual"]
         and task_info["left_object_mesh_dir"] is not None
     ):
         # add left object to body "left_object"

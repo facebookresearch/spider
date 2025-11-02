@@ -77,6 +77,13 @@ def main(config: Config):
 
     # Get reference data (states and controls)
     qpos_ref, qvel_ref, ctrl_ref = get_reference(config, env)
+    np.savez(
+        "/home/pcy/Research/code/spider/example_datasets/processed/hdmi/g1/none/move_suitcase/0/trajectory_reference.npz",
+        qpos=qpos_ref.detach().cpu().numpy(),
+        qvel=qvel_ref.detach().cpu().numpy(),
+        ctrl=ctrl_ref.detach().cpu().numpy(),
+    )
+    exit()
 
     # Setup mujoco model and data from HDMI env (for rendering)
     mj_model = env.sim.mj_model

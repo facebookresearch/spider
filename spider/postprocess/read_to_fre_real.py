@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 import loop_rate_limiters
 import mujoco
@@ -17,12 +16,12 @@ def main(
     dataset_dir: str,
     dataset_name: str,
     robot_type: str,
-    hand_type: str,
+    embodiment_type: str,
     task: str,
     data_type: str = "mjwp",
     data_id: int = 0,
     model_type: str = "standard",
-    output_dir: Optional[str] = None,
+    output_dir: str | None = None,
 ):
     """Load Spider trajectory and export wrist/object poses for Allegro replay."""
     dataset_dir = os.path.abspath(dataset_dir)
@@ -30,7 +29,7 @@ def main(
         dataset_dir=dataset_dir,
         dataset_name=dataset_name,
         robot_type=robot_type,
-        hand_type=hand_type,
+        embodiment_type=embodiment_type,
         task=task,
         data_id=data_id,
     )
@@ -42,9 +41,7 @@ def main(
     output_root = output_dir if output_dir is not None else dataset_dir
     output_root = os.path.abspath(output_root)
     os.makedirs(output_root, exist_ok=True)
-    output_path = (
-        f"{output_root}/{dataset_name}/{robot_type}_{hand_type}_{task}_{data_id}.npz"
-    )
+    output_path = f"{output_root}/{dataset_name}/{robot_type}_{embodiment_type}_{task}_{data_id}.npz"
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 

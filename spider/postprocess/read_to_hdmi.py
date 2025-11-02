@@ -1,6 +1,7 @@
 """This is a minimal example of how to read the retargeted data and rollout in HDMI environment (mjlab version)."""
 
 import os
+from pathlib import Path
 
 import active_adaptation
 import cv2
@@ -221,6 +222,10 @@ def main(
     print(f"Setting up HDMI environment for task: {task}")
     # setup env
     env = setup_env(task=task, max_episode_length=ctrl.shape[0])
+    # Export scene to zip file
+    task_dir = Path(trajectory_path).parent.parent
+    scene_path = task_dir / "scene.zip"
+    env.scene.to_zip(scene_path)
     # Set initial qpos, qvel and ctrl
     device = env.device
     ctrl_torch = torch.from_numpy(ctrl).float().to(device)

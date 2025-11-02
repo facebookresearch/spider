@@ -1,5 +1,4 @@
-"""
-Preprocess data from loco mujoco.
+"""Preprocess data from loco mujoco.
 
 Process:
 1. move z-axis to make sure initial frame the foot is on the ground
@@ -13,14 +12,14 @@ Date: 2025-07-18
 """
 
 import os
-import glob
-import numpy as np
+from contextlib import contextmanager
+
 import loguru
-from loop_rate_limiters import RateLimiter
 import mujoco
 import mujoco.viewer
+import numpy as np
 import tyro
-from contextlib import contextmanager
+from loop_rate_limiters import RateLimiter
 from matplotlib import pyplot as plt
 
 
@@ -46,9 +45,9 @@ def main(
     qvel_list = qvel_list[:max_sim_steps]
 
     # load mujoco model
-    hand_type = task.split("/")[0]
+    embodiment_type = task.split("/")[0]
     task_id = task.split("/")[-1]
-    model_path = f"../assets/{robot_type}/scene_{hand_type}_{task_id}.xml"
+    model_path = f"../assets/{robot_type}/scene_{embodiment_type}_{task_id}.xml"
     mj_model = mujoco.MjModel.from_xml_path(model_path)
     mj_model.opt.disableflags |= mujoco.mjtDisableBit.mjDSBL_CONTACT
     mj_data = mujoco.MjData(mj_model)
@@ -128,7 +127,7 @@ def main(
             end_indices = np.where(diff == -1)[0]  # end of contact sequences
 
             # for each continuous contact sequence, average the positions
-            for start_idx, end_idx in zip(start_indices, end_indices):
+            for start_idx, end_idx in zip(start_indices, end_indices, strict=False):
                 if start_idx < end_idx:  # valid contact sequence
                     # compute mean position during this contact period
                     mean_pos = np.mean(contact_pos[start_idx:end_idx, i, :], axis=0)

@@ -18,10 +18,10 @@ The pipeline automates the complete preprocessing workflow for different dataset
 Discovers all available tasks and their data IDs from the raw dataset directory.
 
 - **gigahand**: Scans `object_poses/` directory for participant-scene-sequence patterns
-- **oakink**: Scans for `{task}_{hand_type}.pkl` files
+- **oakink**: Scans for `{task}_{embodiment_type}.pkl` files
 - **fair_mon/fair_fre**: Scans task directories for numbered `.pkl` files
 
-### `get_task_config(dataset_dir, dataset_name, robot_type, hand_type, task, data_id) -> Config`
+### `get_task_config(dataset_dir, dataset_name, robot_type, embodiment_type, task, data_id) -> Config`
 
 Creates a `Config` object for a specific task with the provided parameters.
 
@@ -29,7 +29,7 @@ Creates a `Config` object for a specific task with the provided parameters.
 
 Processes a single task through the complete pipeline with intelligent skipping:
 
-1. **Step 1 - Dataset Processing**: 
+1. **Step 1 - Dataset Processing**:
    - Checks if `trajectory_kinematic.npz` exists in MANO output directory
    - Calls appropriate dataset processor (gigahand.py, oakink.py, fair_mon.py)
    - Skips if already processed
@@ -65,7 +65,7 @@ The pipeline uses Hydra configuration from `examples/config/preprocess.yaml`:
 ```yaml
 dataset_dir: "../../example_datasets"
 dataset_name: "oakink"  # oakink, gigahand, fair_mon, fair_fre
-hand_type: "bimanual"   # right, left, bimanual
+embodiment_type: "bimanual"   # right, left, bimanual
 robot_type: "allegro"   # allegro, metahand, inspire, etc.
 all_tasks: null         # Optional list to filter specific tasks
 ```
@@ -75,7 +75,7 @@ all_tasks: null         # Optional list to filter specific tasks
 ### Command Line (Hydra)
 ```bash
 cd retarget
-python retarget/preprocess/pipeline.py dataset_name=oakink robot_type=allegro hand_type=bimanual
+python retarget/preprocess/pipeline.py dataset_name=oakink robot_type=allegro embodiment_type=bimanual
 ```
 
 ### Programmatic
@@ -85,8 +85,8 @@ from retarget.preprocess.pipeline import main, PipelineConfig
 cfg = PipelineConfig(
     dataset_dir="./example_datasets",
     dataset_name="oakink",
-    robot_type="allegro", 
-    hand_type="bimanual"
+    robot_type="allegro",
+    embodiment_type="bimanual"
 )
 main(cfg)
 ```
@@ -105,9 +105,9 @@ The pipeline creates the following directory structure:
 
 ```
 {dataset_dir}/processed/{dataset_name}/
-├── mano/{hand_type}/{task}/{data_id}/
+├── mano/{embodiment_type}/{task}/{data_id}/
 │   └── trajectory_kinematic.npz     # Human kinematic data
-├── {robot_type}/{hand_type}/{task}/
+├── {robot_type}/{embodiment_type}/{task}/
 │   ├── scene.xml                    # MuJoCo scene file
 │   ├── scene_eq.xml                 # Scene with equality constraints
 │   ├── task_info.json               # Task metadata

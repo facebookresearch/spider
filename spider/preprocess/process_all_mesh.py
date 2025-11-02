@@ -1,29 +1,26 @@
-"""
-A standalone script to process all meshes in the assets/objects folder in parallel.
+"""A standalone script to process all meshes in the assets/objects folder in parallel.
 Author: Chaoyi Pan
 Date: 2025-07-15
 """
 
-import os
-import sys
-import numpy as np
-import tyro
-import loguru
-from multiprocessing import Pool, cpu_count
-from functools import partial
-import traceback
 import glob
+import os
+import traceback
+from multiprocessing import Pool, cpu_count
+
+import loguru
+import tyro
 
 # add ../ to path
 from decompose import main as decompose_main
 
 
-def get_available_tasks_oakink(hand_type: str):
-    data_dir = f"../../datasets/raw/oakink/"
+def get_available_tasks_oakink(embodiment_type: str):
+    data_dir = "../../datasets/raw/oakink/"
     # list all pkl files in data_dir
     pkl_files = [f for f in os.listdir(data_dir) if f.endswith(".pkl")]
-    # filter out files that don't contain hand_type
-    pkl_files = [f for f in pkl_files if hand_type in f]
+    # filter out files that don't contain embodiment_type
+    pkl_files = [f for f in pkl_files if embodiment_type in f]
     # filter out files whose npz file already exists
     loguru.logger.info(f"Found {len(pkl_files)} pkl files to process")
     # get task names
@@ -31,8 +28,8 @@ def get_available_tasks_oakink(hand_type: str):
     return task_names
 
 
-def get_available_tasks_hot3d(hand_type: str):
-    data_dir = f"../../datasets/raw/hot3d/{hand_type}"
+def get_available_tasks_hot3d(embodiment_type: str):
+    data_dir = f"../../datasets/raw/hot3d/{embodiment_type}"
     # list all folders in data_dir
     task_names = [
         f for f in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, f))
@@ -42,12 +39,12 @@ def get_available_tasks_hot3d(hand_type: str):
 
 def process_single_task(args):
     """Worker function to process a single task."""
-    hand_type, task = args
+    embodiment_type, task = args
     try:
         loguru.logger.info(
-            f"Starting processing task: {task} with hand_type: {hand_type}"
+            f"Starting processing task: {task} with embodiment_type: {embodiment_type}"
         )
-        decompose_main(hand_type=hand_type, task=task)
+        decompose_main(embodiment_type=embodiment_type, task=task)
         loguru.logger.info(f"Successfully processed task: {task}")
     except Exception as e:
         error_msg = f"Error processing task {task}: {str(e)}\n{traceback.format_exc()}"
@@ -57,18 +54,18 @@ def process_single_task(args):
 
 def main(
     dataset: str = "oakink",
-    hand_type: str = "bimanual",
+    embodiment_type: str = "bimanual",
     num_workers: int = 24,
 ):
-    if hand_type == "bimanual":
+    if embodiment_type == "bimanual":
         hands = ["right", "left"]
     else:
-        hands = [hand_type]
+        hands = [embodiment_type]
 
     if dataset == "oakink":
-        task_names = get_available_tasks_oakink(hand_type)
+        task_names = get_available_tasks_oakink(embodiment_type)
     elif dataset == "hot3d":
-        task_names = get_available_tasks_hot3d(hand_type)
+        task_names = get_available_tasks_hot3d(embodiment_type)
     else:
         raise ValueError(f"Dataset {dataset} not supported")
 
@@ -106,7 +103,7 @@ def main(
     loguru.logger.info(f"Using {num_workers} workers for parallel processing")
 
     # Prepare arguments for parallel processing
-    task_args = [(hand_type, task) for task in unprocessed_tasks]
+    task_args = [(embodiment_type, task) for task in unprocessed_tasks]
 
     # Process tasks in parallel
     with Pool(processes=num_workers) as pool:

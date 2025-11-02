@@ -3,7 +3,7 @@
 dataset_name: fair_mon
 robot_type: allegro
 viewer: rerun-mujoco
-hand_type: right
+embodiment_type: right
 task: cat
 rerun_spawn: true
 ref_dt: 0.05

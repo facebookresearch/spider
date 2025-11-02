@@ -1,16 +1,18 @@
-"""
-Define functions to load and save the data.
+"""Define functions to load and save the data.
 
 Author: Chaoyi Pan
 Date: 2025-08-10
 """
 
 from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING
-import numpy as np
+
 import loguru
+import numpy as np
 import torch
+
 from spider.interp import interp
 
 if TYPE_CHECKING:
@@ -43,12 +45,12 @@ def load_data(
         loguru.logger.warning(
             "ctrl data not found, using 'qpos' as a initial guess for control."
         )
-        if config.hand_type in ["bimanual", "right", "left"]:
+        if config.embodiment_type in ["bimanual", "right", "left"]:
             ctrl_ref = qpos_ref[:, : -config.nq_obj]
-        elif config.hand_type in ["CMU", "DanceDB"]:
+        elif config.embodiment_type in ["CMU", "DanceDB"]:
             ctrl_ref = qpos_ref[:, 7:]
         else:
-            raise ValueError(f"Invalid hand_type: {config.hand_type}")
+            raise ValueError(f"Invalid embodiment_type: {config.embodiment_type}")
     # move to device
     qpos_ref_torch = torch.from_numpy(qpos_ref).to(config.device).to(torch.float32)
     qvel_ref_torch = torch.from_numpy(qvel_ref).to(config.device).to(torch.float32)
@@ -109,28 +111,28 @@ def get_processed_data_dir(
     dataset_dir: str,
     dataset_name: str,
     robot_type: str,
-    hand_type: str,
+    embodiment_type: str,
     task: str,
     data_id: int,
 ) -> str:
     """Get the data directory from the data path."""
-    return f"{dataset_dir}/processed/{dataset_name}/{robot_type}/{hand_type}/{task}/{data_id}"
+    return f"{dataset_dir}/processed/{dataset_name}/{robot_type}/{embodiment_type}/{task}/{data_id}"
 
 
 def get_all_tasks(
     dataset_dir: str,
     dataset_name: str,
     robot_type: str,
-    hand_type: str,
+    embodiment_type: str,
 ) -> list[str]:
     """Get all tasks from the data path."""
     return [
         d
         for d in os.listdir(
-            f"{dataset_dir}/processed/{dataset_name}/{robot_type}/{hand_type}"
+            f"{dataset_dir}/processed/{dataset_name}/{robot_type}/{embodiment_type}"
         )
         if os.path.isdir(
-            f"{dataset_dir}/processed/{dataset_name}/{robot_type}/{hand_type}/{d}"
+            f"{dataset_dir}/processed/{dataset_name}/{robot_type}/{embodiment_type}/{d}"
         )
     ]
 

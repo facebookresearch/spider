@@ -1,5 +1,4 @@
-"""
-This script process gigahand dataset to our target format.
+"""This script process gigahand dataset to our target format.
 
 Process:
 1. Load object and hand pose data
@@ -15,25 +14,23 @@ Date: 2025-07-28
 """
 
 import glob
-import sys
-import os
 import json
-import numpy as np
-import shutil
-from pathlib import Path
-from os.path import join
-from scipy.spatial.transform import Rotation, Slerp
-from scipy.interpolate import interp1d
+import os
 from contextlib import contextmanager
+from os.path import join
+from pathlib import Path
+
 import loguru
 import mujoco
 import mujoco.viewer
-from loop_rate_limiters import RateLimiter
-import tyro
+import numpy as np
 import pymeshlab
-
 import retarget
-from retarget.io import get_processed_data_dir, get_mesh_dir
+import tyro
+from loop_rate_limiters import RateLimiter
+from retarget.io import get_mesh_dir, get_processed_data_dir
+from scipy.interpolate import interp1d
+from scipy.spatial.transform import Rotation, Slerp
 
 
 def select_nf(params_all, nf):
@@ -94,7 +91,7 @@ def load_model(
         )
     elif model_type == "smplx":
         body_model = SMPLlayer(
-            join(model_path, "smplx/SMPLX_{}.pkl".format(gender.upper())),
+            join(model_path, f"smplx/SMPLX_{gender.upper()}.pkl"),
             model_type="smplx",
             gender=gender,
             device=device,
@@ -104,13 +101,11 @@ def load_model(
     elif model_type == "manol" or model_type == "manor":
         lr = {"manol": "LEFT", "manor": "RIGHT"}
         body_model = SMPLlayer(
-            join(model_path, "smplh/MANO_{}.pkl".format(lr[model_type])),
+            join(model_path, f"smplh/MANO_{lr[model_type]}.pkl"),
             model_type="mano",
             gender=gender,
             device=device,
-            regressor_path=join(
-                model_path, "J_regressor_mano_{}.txt".format(lr[model_type])
-            ),
+            regressor_path=join(model_path, f"J_regressor_mano_{lr[model_type]}.txt"),
             **kwargs,
         )
     else:
@@ -123,9 +118,9 @@ def hand_pose_loader(keypoints3d_path):
     """Find frame indices for which both left and right hand pose data are present. Code from GigaHand."""
     chosen_path_left = Path(keypoints3d_path) / "chosen_frames_left.json"
     chosen_path_right = Path(keypoints3d_path) / "chosen_frames_right.json"
-    with open(chosen_path_right, "r") as f:
+    with open(chosen_path_right) as f:
         chosen_frames_right = set(json.load(f))
-    with open(chosen_path_left, "r") as f:
+    with open(chosen_path_left) as f:
         chosen_frames_left = set(json.load(f))
     chosen_hand_union_frames = list(chosen_frames_right | chosen_frames_left)
     chosen_hand_intersect_frames = list(chosen_frames_right & chosen_frames_left)
@@ -134,7 +129,7 @@ def hand_pose_loader(keypoints3d_path):
 
 def object_pose_loader(object_pose_path, use_filter=True, use_smoother=True):
     """Load and optionally filter/smooth/interpolate object pose sequence from JSON."""
-    with open(object_pose_path, "r") as f:
+    with open(object_pose_path) as f:
         object_poses = json.load(f)
     tracked_object_frames = sorted([int(frame_id) for frame_id in object_poses.keys()])
     chosen_object_poses, chosen_object_frames = interpolate_object_poses(
@@ -204,7 +199,7 @@ def moving_average_filter(signal, window_size=5):
 
 def hand_mano_loader(path, idx_in_hand_iou_indices):
     """Load and select MANO hand model parameters for frames of interest."""
-    with open(path, "r") as f:
+    with open(path) as f:
         manos_params = json.load(f)
     params_left_list = manos_params["left"]
     params_right_list = manos_params["right"]
@@ -229,8 +224,7 @@ def pytorch3d_quat_to_rotmat(quat_wxyz):
 
 
 def object_transform_loader(valid_frames, chosen_object_poses):
-    """
-    For each valid frame, construct a 4x4 transformation matrix from quaternion/rotvec and translation.
+    """For each valid frame, construct a 4x4 transformation matrix from quaternion/rotvec and translation.
     The quaternion case expects [w, x, y, z] as from PyTorch3D and converts to scipy format.
     """
     all_transforms = []
@@ -368,14 +362,12 @@ def main(
     object_name: str = "ukelele_scan",
     scene: str = "tea",
     sequence_id: str = "0010",
-    hand_type: str = "bimanual",
+    embodiment_type: str = "bimanual",
     show_viewer: bool = True,
     save_video: bool = False,
     use_example_dataset: bool = True,  # load example dataset from gigahand, which has different file structure
 ):
-    """
-    Process gigahand dataset to our target format.
-    """
+    """Process gigahand dataset to our target format."""
     # Resolve dataset paths
     dataset_dir = os.path.abspath(dataset_dir)
     gigahand_path = Path(dataset_dir) / "raw" / "gigahand"
@@ -574,7 +566,7 @@ def main(
         "task": task,
         "dataset_name": "gigahand",
         "robot_type": "mano",
-        "hand_type": hand_type,
+        "embodiment_type": embodiment_type,
         "data_id": data_id,
         "right_object_mesh_dir": None,
         "left_object_mesh_dir": None,
@@ -616,9 +608,9 @@ def main(
     # Use the correct function for geometric transformation
     ms.apply_filter(
         "compute_coord_by_function",
-        x="x-({})".format(mesh_centroid_offset[0]),
-        y="y-({})".format(mesh_centroid_offset[1]),
-        z="z-({})".format(mesh_centroid_offset[2]),
+        x=f"x-({mesh_centroid_offset[0]})",
+        y=f"y-({mesh_centroid_offset[1]})",
+        z=f"z-({mesh_centroid_offset[2]})",
     )
 
     if not os.path.exists(mesh_dir):
@@ -635,7 +627,7 @@ def main(
         dataset_dir=dataset_dir,
         dataset_name="gigahand",
         robot_type="mano",
-        hand_type=hand_type,
+        embodiment_type=embodiment_type,
         task=task,
         data_id=data_id,
     )
@@ -675,7 +667,7 @@ def main(
     )
 
     if (
-        hand_type in ["right", "bimanual"]
+        embodiment_type in ["right", "bimanual"]
         and task_info["right_object_mesh_dir"] is not None
     ):
         mj_spec.add_mesh(
@@ -691,7 +683,7 @@ def main(
             group=0,
             condim=1,
         )
-        loguru.logger.info(f"Added right object to body 'right_object'")
+        loguru.logger.info("Added right object to body 'right_object'")
 
     # add left object to body "left_object"
     object_left_handle = mj_spec.worldbody.add_body(
@@ -706,10 +698,10 @@ def main(
         group=0,
     )
     bimanual_single_object = (
-        hand_type == "bimanual" and task_info["left_object_mesh_dir"] is None
+        embodiment_type == "bimanual" and task_info["left_object_mesh_dir"] is None
     )
     if (
-        hand_type in ["left", "bimanual"]
+        embodiment_type in ["left", "bimanual"]
         and not bimanual_single_object
         and task_info["left_object_mesh_dir"] is not None
     ):

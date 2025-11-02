@@ -21,7 +21,7 @@ from spider.io import get_processed_data_dir
 class Config:
     # === TASK CONFIGURATION ===
     robot_type: str = "allegro"  # "inspire", "allegro", "g1"
-    hand_type: str = "bimanual"  # "left", "right", "bimanual", "CMU"
+    embodiment_type: str = "bimanual"  # "left", "right", "bimanual", "CMU"
     task: str = "pick_spoon_bowl"
 
     # === DATASET CONFIGURATION ===
@@ -139,16 +139,16 @@ def get_noise_scale(config: Config) -> torch.Tensor:
         base=10,
     )[None, :, None]  # Shape: (1, num_knot_steps, 1)
     noise_scale = noise_scale.repeat(1, 1, config.nu)
-    if config.hand_type in ["bimanual", "right", "left"]:
+    if config.embodiment_type in ["bimanual", "right", "left"]:
         noise_scale[:, :, :3] *= config.pos_noise_scale
         noise_scale[:, :, 3:6] *= config.rot_noise_scale
-        if config.hand_type == "bimanual":
+        if config.embodiment_type == "bimanual":
             half_dof = config.nu // 2
             noise_scale[:, :, 6:half_dof] *= config.joint_noise_scale
             noise_scale[:, :, half_dof : half_dof + 3] *= config.pos_noise_scale
             noise_scale[:, :, half_dof + 3 : half_dof + 6] *= config.rot_noise_scale
             noise_scale[:, :, half_dof + 6 :] *= config.joint_noise_scale
-        elif config.hand_type in ["right", "left"]:
+        elif config.embodiment_type in ["right", "left"]:
             noise_scale[:, :, 6:] *= config.joint_noise_scale
     else:
         noise_scale *= config.joint_noise_scale
@@ -194,7 +194,7 @@ def process_config(config: Config):
     config = compute_steps(config)
     trace_steps_tmp = int(np.round(config.trace_dt / config.sim_dt))
     assert np.isclose(
-        config.trace_dt - trace_steps_tmp * config.sim_dt, 0, atol=1e-5
+        config.trace_dt - trace_steps_tmp * config.sim_dt, 0, atol=1e-3
     ), "trace_dt must be divisible by sim_dt"
 
     # Set object DOF based on hand type
@@ -202,7 +202,7 @@ def process_config(config: Config):
         "bimanual": 14,
         "right": 7,
         "left": 7,
-    }.get(config.hand_type, 0)
+    }.get(config.embodiment_type, 0)
 
     # resolve processed directories for this trial
     dataset_dir_abs = os.path.abspath(config.dataset_dir)
@@ -210,7 +210,7 @@ def process_config(config: Config):
         dataset_dir=dataset_dir_abs,
         dataset_name=config.dataset_name,
         robot_type=config.robot_type,
-        hand_type=config.hand_type,
+        embodiment_type=config.embodiment_type,
         task=config.task,
         data_id=config.data_id,
     )

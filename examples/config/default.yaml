@@ -4,7 +4,7 @@ defaults:
 
 # === TASK CONFIGURATION ===
 robot_type: allegro # "inspire", "allegro", "g1"
-hand_type: bimanual # "left", "right", "bimanual", "CMU"
+embodiment_type: bimanual # "left", "right", "bimanual", "CMU"
 task: pick_spoon_bowl
 
 # === DATASET CONFIGURATION ===

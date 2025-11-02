@@ -5,26 +5,24 @@ except ModuleNotFoundError:
     raise SystemExit(1)
 
 import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, List, Tuple
 
 import numpy as np
 import tyro
 from loguru import logger
 
-
-MeshPart = Tuple[np.ndarray, np.ndarray]
+MeshPart = tuple[np.ndarray, np.ndarray]
 
 
 def fast_voxel_convex_decomp_from_pointcloud(
     points: np.ndarray, pitch: float = 0.1, min_points: int = 20
-) -> List[MeshPart]:
+) -> list[MeshPart]:
     """Approximate convex decomposition via voxel clusters and convex hulls."""
-
     coords = np.floor(points / pitch).astype(int)
     unique_voxels, inverse = np.unique(coords, axis=0, return_inverse=True)
 
-    hulls: List[MeshPart] = []
+    hulls: list[MeshPart] = []
     for idx, _ in enumerate(unique_voxels):
         cluster_points = points[inverse == idx]
         if len(cluster_points) < min_points:
@@ -39,9 +37,8 @@ def fast_voxel_convex_decomp_from_pointcloud(
     return hulls
 
 
-def flatten_base(hulls: Iterable[MeshPart], thickness: float = 0.01) -> List[MeshPart]:
+def flatten_base(hulls: Iterable[MeshPart], thickness: float = 0.01) -> list[MeshPart]:
     """Append a thin plate that flattens the bottom of the decomposition."""
-
     hull_list = list(hulls)
     if not hull_list:
         return hull_list
@@ -91,27 +88,27 @@ def main(
     dataset_dir: str = "../../example_datasets",
     dataset_name: str = "oakink",
     robot_type: str = "allegro",
-    hand_type: str = "bimanual",
+    embodiment_type: str = "bimanual",
     task: str = "pick_spoon_bowl",
     data_id: int = 0,
 ) -> None:
     dataset_path = Path(dataset_dir).expanduser().resolve()
 
-    if hand_type == "right":
+    if embodiment_type == "right":
         hands = ["right"]
-    elif hand_type == "left":
+    elif embodiment_type == "left":
         hands = ["left"]
-    elif hand_type == "bimanual":
+    elif embodiment_type == "bimanual":
         hands = ["right", "left"]
     else:
-        raise ValueError(f"Invalid hand type: {hand_type}")
+        raise ValueError(f"Invalid hand type: {embodiment_type}")
 
     processed_dir = (
         dataset_path
         / "processed"
         / dataset_name
         / "mano"
-        / hand_type
+        / embodiment_type
         / task
         / str(data_id)
     )
@@ -141,7 +138,9 @@ def main(
         output_dir = mesh_path / "convex"
 
         if not input_file.exists():
-            logger.warning("Input mesh {} does not exist. Skipping {} hand.", input_file, hand)
+            logger.warning(
+                "Input mesh {} does not exist. Skipping {} hand.", input_file, hand
+            )
             continue
 
         mesh = trimesh.load(

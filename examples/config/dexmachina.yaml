@@ -6,7 +6,7 @@ defaults:
 dataset_dir: "example_datasets"
 dataset_name: "arctic"
 robot_type: "inspire_hand"  # "inspire_hand", "xhand", "dex3_hand"
-hand_type: "bimanual"
+embodiment_type: "bimanual"
 task: "box-30-230"  # format: "object_name-start_frame-end_frame"
 data_id: 0
 viewer: "gs"

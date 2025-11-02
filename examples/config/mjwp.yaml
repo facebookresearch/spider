@@ -1,7 +1,7 @@
 dataset_dir: ../../example_datasets
 dataset_name: oakink
 robot_type: allegro
-hand_type: bimanual
+embodiment_type: bimanual
 task: pick_spoon_bowl
 data_id: 0
 sim_dt: 0.01
@@ -19,7 +19,7 @@ defaults:
 dataset_dir: "../example_datasets"
 dataset_name: "oakink"
 robot_type: "allegro"
-hand_type: "bimanual"
+embodiment_type: "bimanual"
 all_tasks: null  # if null, process all available tasks, otherwise specify list of tasks
 overwrite: false  # whether to overwrite existing mjwp trajectories
 viewer: ""
@@ -29,7 +29,7 @@ method: "mjwp"
 # MJWP-specific optimization parameters (optional overrides)
 # Set to null to use defaults from Config class
 horizon: null  # default: 1.2
-sim_dt: null   # default: 0.01  
+sim_dt: null   # default: 0.01
 ctrl_dt: null  # default: 0.2
 show_viewer: true  # typically false for batch processing
 save_video: true

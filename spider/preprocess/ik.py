@@ -9,7 +9,6 @@ Date: 2025-07-06
 """
 
 import os
-from contextlib import contextmanager
 
 import loguru
 import mujoco
@@ -23,6 +22,7 @@ from scipy import signal
 
 from spider import ROOT
 from spider.io import get_processed_data_dir
+from spider.mujoco_utils import get_viewer
 
 
 def add_mocap_bodies(
@@ -113,7 +113,7 @@ def add_mocap_bodies(
     return mjspec
 
 
-def get_robot_sites(robot_type: str, hand_type: str):
+def get_robot_sites(robot_type: str, embodiment_type: str):
     if robot_type in ["allegro", "metahand"]:
         sites_in_robot = [
             "right_palm",
@@ -146,9 +146,9 @@ def get_robot_sites(robot_type: str, hand_type: str):
             "right_object",
             "left_object",
         ]
-    if hand_type == "right":
+    if embodiment_type == "right":
         sites_in_robot = [s for s in sites_in_robot if "right" in s]
-    elif hand_type == "left":
+    elif embodiment_type == "left":
         sites_in_robot = [s for s in sites_in_robot if "left" in s]
     return sites_in_robot
 
@@ -158,7 +158,7 @@ def main(
     dataset_dir: str = f"{ROOT}/../example_datasets",
     dataset_name: str = "oakink",
     robot_type: str = "allegro",
-    hand_type: str = "bimanual",
+    embodiment_type: str = "bimanual",
     task: str = "pick_spoon_bowl",
     show_viewer: bool = True,
     save_video: bool = False,
@@ -184,7 +184,7 @@ def main(
         dataset_dir=dataset_dir,
         dataset_name=dataset_name,
         robot_type=robot_type,
-        hand_type=hand_type,
+        embodiment_type=embodiment_type,
         task=task,
         data_id=data_id,
     )
@@ -192,7 +192,7 @@ def main(
         dataset_dir=dataset_dir,
         dataset_name=dataset_name,
         robot_type="mano",
-        hand_type=hand_type,
+        embodiment_type=embodiment_type,
         task=task,
         data_id=data_id,
     )
@@ -200,7 +200,7 @@ def main(
     # load model from processed scene
     model_path = f"{processed_dir_robot}/../scene.xml"
     # NOTE: sites in robot should follow the order of the xml file
-    sites_in_robot = get_robot_sites(robot_type, hand_type)
+    sites_in_robot = get_robot_sites(robot_type, embodiment_type)
 
     file_path = f"{processed_dir_mano}/trajectory_keypoints.npz"
     loaded_data = np.load(file_path)
@@ -306,9 +306,9 @@ def main(
         sites_for_mimic.remove("right_pinky_tip")
         sites_for_mimic.remove("left_pinky_tip")
 
-    if hand_type == "right":
+    if embodiment_type == "right":
         sites_for_mimic = [s for s in sites_for_mimic if "right" in s]
-    elif hand_type == "left":
+    elif embodiment_type == "left":
         sites_for_mimic = [s for s in sites_for_mimic if "left" in s]
 
     site_ids = [
@@ -393,7 +393,7 @@ def main(
         "right": ["right"],
         "left": ["left"],
         "bimanual": ["right", "left"],
-    }[hand_type]
+    }[embodiment_type]
 
     # add position sensor to sites_for_mimic
     for i in range(len(sites_for_mimic)):
@@ -425,12 +425,12 @@ def main(
         # print(body_name, body_id, mocap_id)
 
     # set object position
-    if hand_type == "bimanual":
+    if embodiment_type == "bimanual":
         mj_data_ik.qpos[-14:-7] = qpos_obj_right[0]
         mj_data_ik.qpos[-7:] = qpos_obj_left[0]
-    elif hand_type == "right":
+    elif embodiment_type == "right":
         mj_data_ik.qpos[-7:] = qpos_obj_right[0]
-    elif hand_type == "left":
+    elif embodiment_type == "left":
         mj_data_ik.qpos[-7:] = qpos_obj_left[0]
 
     # set the mocap sites to the tip positions
@@ -455,24 +455,7 @@ def main(
         mj_model_ik.vis.global_.offheight = 480
         renderer = mujoco.Renderer(mj_model_ik, height=480, width=720)
     # TODO: move it to mujoco_utils
-    if show_viewer:
-        run_viewer = lambda: mujoco.viewer.launch_passive(mj_model, mj_data)
-    else:
-        cam = mujoco.MjvCamera()
-        cam.type = 2
-        cam.fixedcamid = 0
-
-        @contextmanager
-        def run_viewer():
-            yield type(
-                "DummyViewer",
-                (),
-                {
-                    "is_running": lambda: True,
-                    "sync": lambda: None,
-                    "cam": cam,
-                },
-            )
+    run_viewer = get_viewer(show_viewer, mj_model_ik, mj_data_ik)
 
     # random initial guess to find a stable initial pose
 
@@ -524,7 +507,7 @@ def main(
                             mj_data_ik.mocap_quat[mocap_idx] = qpos_ref[
                                 cnt, qpos_idx, 3:
                             ]
-                    nq_obj = 14 if hand_type == "bimanual" else 7
+                    nq_obj = 14 if embodiment_type == "bimanual" else 7
                     qpos_diff_sum = 0.0
                     for i in range(30):
                         mj_data_ik.ctrl[:] = mj_data_ik.qpos[:-nq_obj].copy()
@@ -575,7 +558,7 @@ def main(
             # set site position and set it to ref mocap position (use original mj_model and mj_data)
             mj_data.qpos[:] = mj_data_ik.qpos.copy()
             mj_data.qvel[:] = 0.0
-            nq_obj = 14 if hand_type == "bimanual" else 7
+            nq_obj = 14 if embodiment_type == "bimanual" else 7
             mj_data.ctrl[:] = mj_data_ik.qpos[:-nq_obj].copy()
 
             # override joint position according to contact state

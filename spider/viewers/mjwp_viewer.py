@@ -1,31 +1,24 @@
-"""
-Visualize MJWarp Simulation
+"""Visualize MJWarp Simulation
 
 Author: Chaoyi Pan
 Date: 2025-06-30
 """
 
-import os
-import time
-from typing import Sequence
-
-from loop_rate_limiters import RateLimiter
 import mujoco
 import mujoco.viewer
-import numpy as np
-import warp as wp
-import mujoco_warp as mjwarp
 import tyro
+import warp as wp
+from loop_rate_limiters import RateLimiter
 
 from spider.config import Config, process_config
 from spider.io import load_data
 from spider.simulators.mjwp import (
+    get_qpos,
+    load_state,
+    save_state,
     setup_env,
     setup_mj_model,
     step_env,
-    get_qpos,
-    save_state,
-    load_state,
 )
 from spider.viewers import setup_viewer
 
@@ -41,7 +34,7 @@ def main(
     dataset_dir: str = "../../example_datasets",
     dataset_name: str = "oakink",
     robot_type: str = "allegro",
-    hand_type: str = "bimanual",
+    embodiment_type: str = "bimanual",
     task: str = "pick_spoon_bowl",
     data_id: int = 0,
     ref_dt: float = 0.02,
@@ -50,7 +43,7 @@ def main(
         robot_type=robot_type,
         task=task,
         dataset_name=dataset_name,
-        hand_type=hand_type,
+        embodiment_type=embodiment_type,
         data_id=data_id,
         ref_dt=ref_dt,
         num_samples=1,

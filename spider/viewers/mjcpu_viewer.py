@@ -1,11 +1,12 @@
-import numpy as np
-from loop_rate_limiters import RateLimiter
-import mujoco
-import mujoco.viewer
-import tyro
-import loguru
 import os
 from contextlib import contextmanager
+
+import loguru
+import mujoco
+import mujoco.viewer
+import numpy as np
+import tyro
+from loop_rate_limiters import RateLimiter
 
 from spider.io import get_processed_data_dir
 
@@ -14,7 +15,7 @@ def main(
     dataset_dir: str = "../../example_datasets",
     dataset_name: str = "oakink",
     robot_type: str = "allegro",
-    hand_type: str = "bimanual",
+    embodiment_type: str = "bimanual",
     task: str = "pick_spoon_bowl",
     data_type: str = "kinematic",
     data_id: int = 0,
@@ -38,7 +39,7 @@ def main(
         dataset_dir=dataset_dir,
         dataset_name=dataset_name,
         robot_type=robot_type,
-        hand_type=hand_type,
+        embodiment_type=embodiment_type,
         task=task,
         data_id=data_id,
     )
@@ -69,7 +70,7 @@ def main(
         if robot_type == "g1":
             ctrl_list = qpos_list[:, 7:]
         else:
-            if hand_type == "bimanual":
+            if embodiment_type == "bimanual":
                 ctrl_list = qpos_list[:, :-14]
             else:
                 ctrl_list = qpos_list[:, :-7]
@@ -111,10 +112,10 @@ def main(
     qvel_list = qvel_list_repeat.reshape(-1, qvel_list.shape[1])
     noise_scale = np.ones(model.nu) * 0.2 * noise_scale
     total_time = default_ctrl_list.shape[0] * sim_dt
-    if hand_type in ["left", "right"]:
+    if embodiment_type in ["left", "right"]:
         noise_scale[:3] = 0.01
         noise_scale[3:6] = 0.03
-    elif hand_type == "bimanual":
+    elif embodiment_type == "bimanual":
         half_dof = model.nu // 2
         noise_scale[:3] = 0.02
         noise_scale[3:6] = 0.03
@@ -157,7 +158,7 @@ def main(
             return default_ctrl_list + rect_list
 
     elif ctrl_mode == "debug":
-        log_info = np.load(f"../../outputs/info.npz")
+        log_info = np.load("../../outputs/info.npz")
         ctrls = log_info["ctrl"]
         ctrls_flat = ctrls.reshape(-1, model.nu)
 
@@ -211,7 +212,7 @@ def main(
                 "right": ["right"],
                 "left": ["left"],
                 "bimanual": ["right", "left"],
-            }.get(hand_type, [])
+            }.get(embodiment_type, [])
             tips = {
                 "allegro": ["thumb", "index", "middle", "ring"],
                 "metahand": ["thumb", "index", "middle", "ring"],
@@ -321,20 +322,20 @@ def main(
         for key in info_list[0].keys():
             info_aggregated[key] = np.stack([info[key] for info in info_list], axis=0)
         np.savez(
-            f"../../outputs/mjcpu_{robot_type}_{hand_type}_{task}.npz",
+            f"../../outputs/mjcpu_{robot_type}_{embodiment_type}_{task}.npz",
             **info_aggregated,
         )
-        print(f"Saved {robot_type}_{hand_type}_{task}.npz")
+        print(f"Saved {robot_type}_{embodiment_type}_{task}.npz")
     if save_video:
-        video_dir = f"../../recordings/{robot_type}/{hand_type}/mjcpu/{task}"
+        video_dir = f"../../recordings/{robot_type}/{embodiment_type}/mjcpu/{task}"
         os.makedirs(video_dir, exist_ok=True)
         imageio.mimsave(
-            f"{video_dir}/mjcpu_{robot_type}_{hand_type}_{task}.mp4",
+            f"{video_dir}/mjcpu_{robot_type}_{embodiment_type}_{task}.mp4",
             images,
             fps=int(1 / sim_dt),
         )
         loguru.logger.info(
-            f"Saved video to {video_dir}/mjcpu_{robot_type}_{hand_type}_{task}.mp4"
+            f"Saved video to {video_dir}/mjcpu_{robot_type}_{embodiment_type}_{task}.mp4"
         )
 
 

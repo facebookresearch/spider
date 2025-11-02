@@ -1,0 +1,30 @@
+# @package _global_
+# Override configuration for fair_mon dataset
+dataset_name: amass
+robot_type: g1
+viewer: mujoco
+embodiment_type: humanoid
+task: sprint
+rerun_spawn: true
+sim_dt: 0.0166667
+ref_dt: 0.0166667
+trace_dt: 0.0166667
+max_sim_steps: 100
+horizon: 0.6
+ctrl_dt: 0.1
+knot_dt: 0.2
+# annealing parameters
+first_ctrl_noise_scale: 0.5
+last_ctrl_noise_scale: 1.0
+final_noise_scale: 0.1
+joint_noise_scale: 0.1
+# sampling
+improvement_threshold: 0.01
+max_num_iterations: 16
+temperature: 0.1
+num_samples: 2048
+# reward
+vel_rew_scale: 0.0
+joint_rew_scale: 1.0
+pos_rew_scale: 3.0
+rot_rew_scale: 3.0

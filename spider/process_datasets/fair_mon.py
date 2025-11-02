@@ -4,7 +4,7 @@
 2. Convert original data to finger tip, object and wrist position and rotation using hand landmarks
 3. Visualize the data in mujoco viewer
 
-File path example: {dataset_dir}/raw/fair_mon/{task}_{hand_type}/{data_id}.pkl
+File path example: {dataset_dir}/raw/fair_mon/{task}_{embodiment_type}/{data_id}.pkl
 
 Input: pickle file from FAIR MON dataset.
 Output: npz file containing:
@@ -211,7 +211,7 @@ def interpolate_pointclouds(pointclouds, M):
 
 def main(
     dataset_dir: str = f"{spider.ROOT}/../example_datasets",
-    hand_type: str = "right",
+    embodiment_type: str = "right",
     data_id: int = 0,
     task: str = "coke",
     right_object_name: str = "coke",
@@ -232,14 +232,14 @@ def main(
         dataset_dir=dataset_dir,
         dataset_name="fair_mon",
         robot_type="mano",
-        hand_type=hand_type,
+        embodiment_type=embodiment_type,
         task=task,
         data_id=data_id,
     )
     os.makedirs(output_dir, exist_ok=True)
 
     # Load the data
-    file_path = f"{dataset_dir}/raw/fair_mon/{task}_{hand_type}/{data_id}.pkl"
+    file_path = f"{dataset_dir}/raw/fair_mon/{task}_{embodiment_type}/{data_id}.pkl"
     with open(file_path, "rb") as f:
         data_raw = pickle.load(f)
 
@@ -254,7 +254,7 @@ def main(
         "task": task,
         "dataset_name": "fair_mon",
         "robot_type": "mano",
-        "hand_type": hand_type,
+        "embodiment_type": embodiment_type,
         "data_id": data_id,
         "right_object_mesh_dir": None,
         "left_object_mesh_dir": None,
@@ -394,7 +394,7 @@ def main(
     fingertip_positions = hand_landmark_trajectory[:, fingertip_indices, :]
 
     # Handle left/right hand data
-    if hand_type in ["right", "bimanual"]:
+    if embodiment_type in ["right", "bimanual"]:
         right_wrist_pos = wrist_positions
         right_wrist_rot = wrist_orientations
         right_mano_joints = fingertip_positions
@@ -405,7 +405,7 @@ def main(
         right_mano_joints = np.zeros((N, 5, 3))
         right_obj_trajectory = np.tile(np.eye(4), (N, 1, 1))
 
-    if hand_type in ["left", "bimanual"]:
+    if embodiment_type in ["left", "bimanual"]:
         left_wrist_pos = wrist_positions
         left_wrist_rot = wrist_orientations
         left_mano_joints = fingertip_positions
@@ -585,7 +585,7 @@ def main(
             group=0,
         )
         if (
-            hand_type in ["right", "bimanual"]
+            embodiment_type in ["right", "bimanual"]
             and task_info["right_object_mesh_dir"] is not None
         ):
             mj_spec.add_mesh(
@@ -636,10 +636,10 @@ def main(
             frictionloss=0.0001,
         )
         bimanual_single_object = (
-            hand_type == "bimanual" and task_info["left_object_mesh_dir"] is None
+            embodiment_type == "bimanual" and task_info["left_object_mesh_dir"] is None
         )
         if (
-            hand_type in ["left", "bimanual"]
+            embodiment_type in ["left", "bimanual"]
             and not bimanual_single_object
             and task_info["left_object_mesh_dir"] is not None
         ):
@@ -696,17 +696,17 @@ def main(
             "left_ring_tip",
             "left_pinky_tip",
         ]
-        if hand_type == "right":
+        if embodiment_type == "right":
             fingertips = fingertips_right
             objects = ["right_collision"]
-        elif hand_type == "left":
+        elif embodiment_type == "left":
             fingertips = fingertips_left
             objects = ["left_collision"]
-        elif hand_type == "bimanual":
+        elif embodiment_type == "bimanual":
             fingertips = fingertips_right + fingertips_left
             objects = ["right_collision", "left_collision"]
         else:
-            raise ValueError(f"Invalid hand type: {hand_type}")
+            raise ValueError(f"Invalid hand type: {embodiment_type}")
 
         for fingertip in fingertips:
             for object_name in objects:

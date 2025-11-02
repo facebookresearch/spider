@@ -8,7 +8,7 @@ robot_type: "g1"
 task: "move_suitcase"  # HDMI task name (e.g., move_suitcase, open_drawer, etc.)
 viewer: "mujoco-rerun"  # "mujoco" for visualization, "none" for headless
 rerun_spawn: false
-hand_type: "none" # don't use specific noise scaling for hands
+embodiment_type: "none" # don't use specific noise scaling for hands
 device: "cuda:0"
 joint_noise_scale: 0.2 # disable specific noise scaling for robot
 

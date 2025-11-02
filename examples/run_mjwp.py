@@ -69,13 +69,13 @@ def main(config: Config):
     mj_data = mujoco.MjData(mj_model)
     mj_data_ref = mujoco.MjData(mj_model)
     mj_data.qpos[:] = qpos_ref[0].detach().cpu().numpy()
-    mj_data.qvel[:] = 0.0
-    mj_data.ctrl[:] = qpos_ref[0][: -config.nq_obj].detach().cpu().numpy()
+    mj_data.qvel[:] = qvel_ref[0].detach().cpu().numpy()
+    mj_data.ctrl[:] = ctrl_ref[0].detach().cpu().numpy()
     mujoco.mj_step(mj_model, mj_data)
     mj_data.time = 0.0
     images = []
     object_trace_site_ids = []
-    hand_trace_site_ids = []
+    robot_trace_site_ids = []
     for sid in range(mj_model.nsite):
         name = mujoco.mj_id2name(mj_model, mujoco.mjtObj.mjOBJ_SITE, sid)
         if name is not None:
@@ -83,8 +83,8 @@ def main(config: Config):
                 if "object" in name:
                     object_trace_site_ids.append(sid)
                 else:
-                    hand_trace_site_ids.append(sid)
-    config.trace_site_ids = object_trace_site_ids + hand_trace_site_ids
+                    robot_trace_site_ids.append(sid)
+    config.trace_site_ids = object_trace_site_ids + robot_trace_site_ids
 
     # setup env params
     env_params_list = []

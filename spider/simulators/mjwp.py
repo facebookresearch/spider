@@ -71,11 +71,32 @@ def _compile_step(
 def setup_mj_model(config: Config) -> mujoco.MjModel:
     model_cpu = mujoco.MjModel.from_xml_path(config.model_path)
     model_cpu.opt.timestep = float(config.sim_dt)
-    model_cpu.opt.iterations = 20
-    model_cpu.opt.ls_iterations = 50
-    model_cpu.opt.o_solref = [0.02, 1.0]
-    model_cpu.opt.o_solimp = [0.9, 0.95, 0.001, 0.5, 2]  # softer contact for sim2real
-    model_cpu.opt.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
+    if config.embodiment_type in ["left", "right", "bimanual"]:
+        # setup for hand
+        model_cpu.opt.iterations = 20
+        model_cpu.opt.ls_iterations = 50
+        model_cpu.opt.o_solref = [0.02, 1.0]
+        model_cpu.opt.o_solimp = [
+            0.9,
+            0.95,
+            0.001,
+            0.5,
+            2,
+        ]  # softer contact for sim2real
+        model_cpu.opt.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
+    elif config.embodiment_type in ["humanoid"]:
+        # setup for humanoid
+        model_cpu.opt.iterations = 2
+        model_cpu.opt.ls_iterations = 10
+        model_cpu.opt.o_solref = [0.02, 1.0]
+        model_cpu.opt.o_solimp = [
+            0.9,
+            0.95,
+            0.001,
+            0.5,
+            2,
+        ]  # softer contact for sim2real
+        model_cpu.opt.integrator = mujoco.mjtIntegrator.mjINT_EULER
     return model_cpu
 
 
@@ -90,10 +111,10 @@ def setup_env(config: Config, ref_data: tuple[torch.Tensor, ...]) -> MJWPEnv:
     model_cpu = setup_mj_model(config)
     data_cpu = mujoco.MjData(model_cpu)
     # Seed initial state
-    qpos_np = qpos_init.detach().cpu().numpy()
-    data_cpu.qpos[:] = qpos_np
-    data_cpu.qvel[:] = 0.0
-    data_cpu.ctrl[:] = qpos_np[: -config.nq_obj]
+    arrs = (qpos_init, qvel_ref[0], ctrl_ref[0])
+    data_cpu.qpos[:] = arrs[0].detach().cpu().numpy()
+    data_cpu.qvel[:] = arrs[1].detach().cpu().numpy()
+    data_cpu.ctrl[:] = arrs[2].detach().cpu().numpy()
     mujoco.mj_step(model_cpu, data_cpu)
 
     # Move to Warp (batched worlds)
@@ -143,7 +164,7 @@ def setup_env(config: Config, ref_data: tuple[torch.Tensor, ...]) -> MJWPEnv:
 
 def _weight_diff_qpos(config: Config) -> torch.Tensor:
     w = torch.ones(config.nv, device=config.device)
-    if config.hand_type == "bimanual":
+    if config.embodiment_type == "bimanual":
         half_dof = int(config.nu // 2)
         w[:3] = config.base_pos_rew_scale
         w[3:6] = config.base_rot_rew_scale
@@ -156,17 +177,20 @@ def _weight_diff_qpos(config: Config) -> torch.Tensor:
         w[-9:-6] = config.rot_rew_scale
         w[-6:-3] = config.pos_rew_scale
         w[-3:] = config.rot_rew_scale
-    elif config.hand_type in ["right", "left"]:
+    elif config.embodiment_type in ["right", "left"]:
         w[:3] = config.base_pos_rew_scale
         w[3:6] = config.base_rot_rew_scale
         w[6 : config.nu] = config.joint_rew_scale
         w[-6:-3] = config.pos_rew_scale
         w[-3:] = config.rot_rew_scale
-    elif config.hand_type in ["CMU", "DanceDB"]:
+    elif config.embodiment_type in ["humanoid"]:  # humanoid robot
+        # robot pos and rot
         w[:3] = config.pos_rew_scale
         w[3:6] = config.rot_rew_scale
+        # robot joint
+        w[6:] = config.joint_rew_scale
     else:
-        raise ValueError(f"Invalid hand_type: {config.hand_type}")
+        raise ValueError(f"Invalid embodiment_type: {config.embodiment_type}")
     return w
 
 
@@ -178,7 +202,7 @@ def _diff_qpos(
     """
     batch_size = qpos_sim.shape[0]
     qpos_diff = torch.zeros((batch_size, config.nv), device=config.device)
-    if config.hand_type == "bimanual":
+    if config.embodiment_type == "bimanual":
         # joint
         qpos_diff[:, :-12] = qpos_sim[:, :-14] - qpos_ref[:, :-14]
         # position
@@ -187,20 +211,22 @@ def _diff_qpos(
         # rotation
         qpos_diff[:, -9:-6] = quat_sub(qpos_sim[:, -11:-7], qpos_ref[:, -11:-7])
         qpos_diff[:, -3:] = quat_sub(qpos_sim[:, -4:], qpos_ref[:, -4:])
-    elif config.hand_type in ["right", "left"]:
+    elif config.embodiment_type in ["right", "left"]:
         # joint
         qpos_diff[:, :-6] = qpos_sim[:, :-7] - qpos_ref[:, :-7]
         # position
         qpos_diff[:, -6:-3] = qpos_sim[:, -7:-4] - qpos_ref[:, -7:-4]
         # rotation
         qpos_diff[:, -3:] = quat_sub(qpos_sim[:, -4:], qpos_ref[:, -4:])
-    elif config.hand_type in ["CMU", "DanceDB"]:
+    elif config.embodiment_type in ["humanoid"]:
         # joint
-        qpos_diff[:, 7:] = qpos_sim[:, 7:] - qpos_ref[:, 7:]
+        qpos_diff[:, 6:] = qpos_sim[:, 7:] - qpos_ref[:, 7:]
         # position
         qpos_diff[:, :3] = qpos_sim[:, :3] - qpos_ref[:, :3]
         # rotation
         qpos_diff[:, 3:6] = quat_sub(qpos_sim[:, 3:7], qpos_ref[:, 3:7])
+    else:
+        raise ValueError(f"Invalid embodiment_type: {config.embodiment_type}")
     return qpos_diff
 
 
@@ -212,6 +238,8 @@ def get_reward(
     """Non-terminal step reward for MJWP batched worlds.
     ref is a tuple: (qpos_ref, qvel_ref, ctrl_ref, contact_ref, contact_pos_ref)
     Returns (N,)
+
+    TODO: move reward computation to task-specific module
     """
     qpos_ref, qvel_ref, ctrl_ref, contact_ref, _contact_pos_ref = ref
     qpos_sim = wp.to_torch(env.data_wp.qpos)
@@ -248,19 +276,19 @@ def get_terminal_reward(
     # qpos_ref, qvel_ref, ctrl_ref, contact_ref, _ = ref_slice
     # qpos_sim = wp.to_torch(env.data_wp.qpos)
     # qpos_weight = torch.zeros(qpos_sim.shape[1], device=config.device)
-    # if config.hand_type == "bimanual":
+    # if config.embodiment_type == "bimanual":
     #     qpos_weight[-14:-11] = config.pos_rew_scale
     #     qpos_weight[-11:-7] = config.rot_rew_scale
     #     qpos_weight[-7:-4] = config.pos_rew_scale
     #     qpos_weight[-4:] = config.rot_rew_scale
-    # elif config.hand_type in ["right", "left"]:
+    # elif config.embodiment_type in ["right", "left"]:
     #     qpos_weight[-7:-4] = config.pos_rew_scale
     #     qpos_weight[-4:] = config.rot_rew_scale
-    # elif config.hand_type in ["CMU", "DanceDB"]:
+    # elif config.embodiment_type in ["CMU", "DanceDB"]:
     #     qpos_weight[:3] = config.pos_rew_scale
     #     qpos_weight[3:7] = config.rot_rew_scale
     # else:
-    #     raise ValueError(f"Invalid hand_type: {config.hand_type}")
+    #     raise ValueError(f"Invalid embodiment_type: {config.embodiment_type}")
     # delta_qpos = (qpos_sim - qpos_ref) * qpos_weight
     # cost_object = config.terminal_rew_scale * torch.sum(delta_qpos**2, dim=1)
 
@@ -454,14 +482,14 @@ def load_env_params(config: Config, env: MJWPEnv, env_param: dict):
     if "xy_offset" in env_param:
         qpos_override_th = wp.to_torch(env.data_wp.qpos)
         # TODO: make object pos detection automatic
-        if config.hand_type == "bimanual":
+        if config.embodiment_type == "bimanual":
             qpos_override_th[:, -14:-12] = (
                 qpos_override_th[:, -14:-12] + env_param["xy_offset"]
             )
             qpos_override_th[:, -12:-10] = (
                 qpos_override_th[:, -12:-10] + env_param["xy_offset"]
             )
-        elif config.hand_type in ["right", "left"]:
+        elif config.embodiment_type in ["right", "left"]:
             qpos_override_th[:, -7:-5] = (
                 qpos_override_th[:, -7:-5] + env_param["xy_offset"]
             )
@@ -718,7 +746,9 @@ def sync_env_mujoco(config: Config, env: MJWPEnv, mj_data: mujoco.MjData):
     return env
 
 
-def copy_sample_state(config: Config, env: MJWPEnv, src_indices: torch.Tensor, dst_indices: torch.Tensor):
+def copy_sample_state(
+    config: Config, env: MJWPEnv, src_indices: torch.Tensor, dst_indices: torch.Tensor
+):
     """Copy simulation state from source samples to destination samples.
 
     Args:
