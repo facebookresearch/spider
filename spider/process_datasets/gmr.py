@@ -2,7 +2,15 @@
 
 Please generate the pkl file from GMR first with command like:
 
-python scripts/smplx_to_robot.py --smplx_file "/home/pcy/Research/code/GMR/data/ACCAD/Male2MartialArtsExtended_c3d/Extended_1_stageii.npz" --robot "unitree_g1" --save_path "/home/pcy/Research/code/spider/example_datasets/processed/amass/g1/none/martial_arts/0/trajectory_gmr.pkl"
+For simpx
+```bash
+python scripts/smplx_to_robot.py --smplx_file "/home/pcy/Research/code/GMR/data/ACCAD/Male2MartialArtsExtended_c3d/Extended_1_stageii.npz" --robot "unitree_g1" --save_path "/home/pcy/Research/code/spider/example_datasets/processed/amass/g1/humanoid/martial_arts/0/trajectory_gmr.pkl"
+```
+
+For lafan1:
+```bash
+python scripts/bvh_to_robot.py --bvh_file "/home/pcy/Research/code/GMR/data/lafan1/dance1_subject1.bvh" --robot "unitree_g1" --save_path "/home/pcy/Research/code/spider/example_datasets/processed/lafan/g1/humanoid/dance/0/trajectory_gmr.pkl" --rate_limit --format "lafan1" --motion_fps 30
+```
 
 Input: pkl file from GMR
 Output:
@@ -31,14 +39,16 @@ from spider.mujoco_utils import get_viewer
 def main(
     dataset_dir: str = f"{ROOT}/../example_datasets",
     dataset_name: str = "amass",
-    robot_type: str = "g1",
+    robot_type: str = "unitree_g1",
     embodiment_type: str = "humanoid",
-    task: str = "martial_arts",
+    task: str = "sprint",
     data_id: int = 0,
     show_viewer: bool = True,
     save_video: bool = True,
     overwrite: bool = True,
     enable_rate_limiter: bool = False,
+    start_frame: int = 0,
+    end_frame: int = -1,
 ):
     dataset_dir = os.path.abspath(dataset_dir)
     processed_dir = get_processed_data_dir(
@@ -62,6 +72,7 @@ def main(
     root_quat = gmr_data["root_rot"][:, [3, 0, 1, 2]]  # from xyzw to wxyz
     dof_pos = gmr_data["dof_pos"]
     qpos = np.concatenate([root_pos, root_quat, dof_pos], axis=-1)
+    qpos = qpos[start_frame:end_frame]
     print(f"qpos shape: {qpos.shape}")
 
     # prepare scene file by copying from SPIDER assets

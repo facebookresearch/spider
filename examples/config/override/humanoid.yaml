@@ -7,9 +7,9 @@ embodiment_type: humanoid
 task: sprint
 rerun_spawn: true
 sim_dt: 0.0166667
-ref_dt: 0.0166667
-trace_dt: 0.0166667
-max_sim_steps: 100
+ref_dt: 0.0333333
+trace_dt: 0.0333333
+max_sim_steps: -1
 horizon: 0.6
 ctrl_dt: 0.1
 knot_dt: 0.2
@@ -28,3 +28,4 @@ vel_rew_scale: 0.0
 joint_rew_scale: 1.0
 pos_rew_scale: 3.0
 rot_rew_scale: 3.0
+# note: above parameter is optimized for speed. you can have better performance with horizon=1.0
