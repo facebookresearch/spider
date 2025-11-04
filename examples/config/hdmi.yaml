@@ -4,33 +4,33 @@ defaults:
 
 # Task configuration
 dataset_name: "hdmi"
-robot_type: "g1"
-task: "move_suitcase"  # HDMI task name (e.g., move_suitcase, open_drawer, etc.)
-viewer: "mujoco-rerun"  # "mujoco" for visualization, "none" for headless
+robot_type: "unitree_g1"
+task: "move_suitcase" # HDMI task name (e.g., move_suitcase, open_drawer, etc.)
+viewer: "mujoco-rerun" # "mujoco" for visualization, "none" for headless
 rerun_spawn: false
-embodiment_type: "none" # don't use specific noise scaling for hands
+embodiment_type: "humanoid" # don't use specific noise scaling for hands
 device: "cuda:0"
 joint_noise_scale: 0.2 # disable specific noise scaling for robot
 
 # Simulation and control parameters
 simulator: hdmi
-sim_dt: 0.02  # mjlab simulation timestep
-ctrl_dt: 0.04  # Control timestep (how often MPC updates)
-knot_dt: 0.20  # Knot point spacing
-ref_dt: 0.02  # Reference trajectory timestep
-horizon: 0.80  # MPC horizon in seconds
+sim_dt: 0.02 # mjlab simulation timestep
+ctrl_dt: 0.04 # Control timestep (how often MPC updates)
+knot_dt: 0.20 # Knot point spacing
+ref_dt: 0.02 # Reference trajectory timestep
+horizon: 0.80 # MPC horizon in seconds
 show_viewer: true
-save_video: true  # Disable for now - need to configure camera names for HDMI
+save_video: true # Disable for now - need to configure camera names for HDMI
 save_info: true
-max_sim_steps: -1  # Maximum simulation steps (-1 for unlimited)
-nu: -1  # Number of controls (will be set from environment)
+max_sim_steps: -1 # Maximum simulation steps (-1 for unlimited)
+nu: -1 # Number of controls (will be set from environment)
 
 # Optimization parameters
 use_torch_compile: true
 
 # MPC optimization parameters
-max_num_iterations: 32  # Number of iterations per MPC step
-num_samples: 1024  # Number of parallel samples for sampling
+max_num_iterations: 32 # Number of iterations per MPC step
+num_samples: 1024 # Number of parallel samples for sampling
 last_ctrl_noise_scale: 1.0
 first_ctrl_noise_scale: 1.0
 final_noise_scale: 0.1

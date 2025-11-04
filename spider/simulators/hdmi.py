@@ -45,6 +45,7 @@ def setup_env(config: Config, ref_data: tuple[torch.Tensor, ...]):
 
     # Load task-specific config (e.g., move_suitcase)
     task_config_path = os.path.join(hdmi_dir, f"cfg/task/G1/hdmi/{config.task}.yaml")
+    print(f"task_config_path: {task_config_path}")
     task_cfg = OmegaConf.load(task_config_path)
 
     # Merge configurations (task overrides base)
@@ -126,12 +127,6 @@ def setup_env(config: Config, ref_data: tuple[torch.Tensor, ...]):
             for key, value in group_params.items():
                 if "vel" in key.lower():
                     del filtered_rewards[group_name][key]
-                # if "root" in key.lower():
-                #     # scale up root weight by 10.0
-                #     filtered_rewards[group_name][key]["weight"] *= 10.0
-                # if "object_pos" in key.lower():
-                #     # scale up object weight by 10.0
-                #     filtered_rewards[group_name][key]["weight"] *= 3.0
 
     cfg.reward = filtered_rewards
     # redefine tracking reward
@@ -494,7 +489,9 @@ def load_env_params(config: Config, env, env_param: dict):
     return env
 
 
-def copy_sample_state(config: Config, env, src_indices: torch.Tensor, dst_indices: torch.Tensor):
+def copy_sample_state(
+    config: Config, env, src_indices: torch.Tensor, dst_indices: torch.Tensor
+):
     """Copy simulation state from source samples to destination samples.
 
     Args:

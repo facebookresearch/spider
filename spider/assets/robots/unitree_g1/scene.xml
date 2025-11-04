@@ -1,5 +1,5 @@
 <mujoco model="g1 scene">
-  <compiler angle="radian" meshdir="../../../assets/robots/g1/meshes" autolimits="true" />
+  <compiler angle="radian" meshdir="../../../assets/robots/unitree_g1/meshes" autolimits="true" />
 
   <!-- performance options -->
   <option timestep="0.02" iterations="2" ls_iterations="10">

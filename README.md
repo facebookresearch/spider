@@ -57,19 +57,19 @@ DATA_ID=0
 ROBOT_TYPE=allegro
 
 # read data
-uv run spider/process_datasets/fair_mon.py --task=${TASK} --right-object-name=cat --hand-type=${HAND_TYPE} --data-id=${DATA_ID}
+uv run spider/process_datasets/fair_mon.py --task=${TASK} --right-object-name=${RIGHT_OBJECT_NAME} --embodiment-type=${HAND_TYPE} --data-id=${DATA_ID}
 
 # decompose object
-uv run spider/preprocess/decompose.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --hand-type=${HAND_TYPE}
+uv run spider/preprocess/decompose.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --embodiment-type=${HAND_TYPE}
 
 # detect contact (optional)
-uv run spider/preprocess/detect_contact.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --hand-type=${HAND_TYPE}
+uv run spider/preprocess/detect_contact.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --embodiment-type=${HAND_TYPE}
 
 # generate scene
-uv run spider/preprocess/generate_xml.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --hand-type=${HAND_TYPE} --robot-type=${ROBOT_TYPE}
+uv run spider/preprocess/generate_xml.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --embodiment-type=${HAND_TYPE} --robot-type=${ROBOT_TYPE}
 
 # kinematic retargeting
-uv run spider/preprocess/ik.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --hand-type=${HAND_TYPE} --robot-type=${ROBOT_TYPE} --open-hand
+uv run spider/preprocess/ik.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --embodiment-type=${HAND_TYPE} --robot-type=${ROBOT_TYPE} --open-hand
 
 # retargeting
 uv run examples/run_mjwp.py +override=fair_mon

@@ -189,6 +189,15 @@ def _weight_diff_qpos(config: Config) -> torch.Tensor:
         w[3:6] = config.rot_rew_scale
         # robot joint
         w[6:] = config.joint_rew_scale
+    elif config.embodiment_type in ["humanoid_object"]:
+        # robot pos and rot
+        w[:3] = config.base_pos_rew_scale
+        w[3:6] = config.base_rot_rew_scale
+        # robot joint
+        w[6:-6] = config.joint_rew_scale
+        # object pos and rot
+        w[-6:-3] = config.pos_rew_scale
+        w[-3:] = config.rot_rew_scale
     else:
         raise ValueError(f"Invalid embodiment_type: {config.embodiment_type}")
     return w
@@ -225,6 +234,20 @@ def _diff_qpos(
         qpos_diff[:, :3] = qpos_sim[:, :3] - qpos_ref[:, :3]
         # rotation
         qpos_diff[:, 3:6] = quat_sub(qpos_sim[:, 3:7], qpos_ref[:, 3:7])
+    elif config.embodiment_type in ["humanoid_object"]:
+        qpos_humanoid = qpos_sim[:, :-7]
+        qpos_object = qpos_sim[:, -7:]
+        qpos_ref_humanoid = qpos_ref[:, :-7]
+        qpos_ref_object = qpos_ref[:, -7:]
+        # position
+        qpos_diff[:, :3] = qpos_humanoid[:, :3] - qpos_ref_humanoid[:, :3]
+        # rotation
+        qpos_diff[:, 3:6] = quat_sub(qpos_humanoid[:, 3:7], qpos_ref_humanoid[:, 3:7])
+        # joint
+        qpos_diff[:, 6:-6] = qpos_humanoid[:, 7:] - qpos_ref_humanoid[:, 7:]
+        # object
+        qpos_diff[:, -6:-3] = qpos_object[:, :3] - qpos_ref_object[:, :3]
+        qpos_diff[:, -3:] = quat_sub(qpos_object[:, 3:7], qpos_ref_object[:, 3:7])
     else:
         raise ValueError(f"Invalid embodiment_type: {config.embodiment_type}")
     return qpos_diff

@@ -7,6 +7,7 @@ Date: 2025-10-18
 from __future__ import annotations
 
 import time
+from pathlib import Path
 
 import hydra
 import imageio
@@ -78,12 +79,13 @@ def main(config: Config):
     # Get reference data (states and controls)
     qpos_ref, qvel_ref, ctrl_ref = get_reference(config, env)
     np.savez(
-        "/home/pcy/Research/code/spider/example_datasets/processed/hdmi/g1/none/move_suitcase/0/trajectory_reference.npz",
+        f"{config.output_dir}/trajectory_kinematic.npz",
         qpos=qpos_ref.detach().cpu().numpy(),
         qvel=qvel_ref.detach().cpu().numpy(),
         ctrl=ctrl_ref.detach().cpu().numpy(),
     )
-    exit()
+    # optional: also save env xml
+    # env.scene.to_zip(Path(config.output_dir) / "../scene.zip")
 
     # Setup mujoco model and data from HDMI env (for rendering)
     mj_model = env.sim.mj_model

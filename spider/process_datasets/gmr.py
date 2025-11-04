@@ -25,6 +25,7 @@ import os
 import pickle
 import shutil
 
+import torch
 import imageio
 import mujoco
 import numpy as np
@@ -34,6 +35,7 @@ from loop_rate_limiters import RateLimiter
 from spider import ROOT
 from spider.io import get_processed_data_dir
 from spider.mujoco_utils import get_viewer
+from spider.math import quat_sub
 
 
 def main(
@@ -147,6 +149,58 @@ def main(
         info_aggregated[key] = np.stack([info[key] for info in info_list], axis=0)
     np.savez(f"{processed_dir}/trajectory_kinematic.npz", **info_aggregated)
     print(f"Saved trajectory to {processed_dir}/trajectory_kinematic.npz")
+    if save_video:
+        imageio.mimsave(f"{processed_dir}/visualization_kinematic.mp4", images, fps=fps)
+        print(f"Saved video to {processed_dir}/visualization_kinematic.mp4")
+
+    # optional: rollout ik trajectory to compute the trajectory kinematic distance
+    num_substeps = 2
+    mj_model.opt.timestep = 1.0 / fps / num_substeps
+    # reset to initial state
+    mj_data.qpos[:] = qpos[0]
+    mj_data.qvel[:] = 0.0
+    mj_data.ctrl[:] = qpos[0][7:]
+    mujoco.mj_forward(mj_model, mj_data)
+    # rollout
+    qpos_rollout = np.zeros((qpos.shape[0], mj_model.nq))
+    qvel_rollout = np.zeros((qpos.shape[0], mj_model.nv))
+    ctrl_rollout = np.zeros((qpos.shape[0], mj_model.nu))
+    qpos_rollout[0] = qpos[0]
+    qvel_rollout[0] = 0.0
+    ctrl_rollout[0] = qpos[0][7:]
+    images = []
+    for i in range(1, qpos.shape[0]):
+        for j in range(num_substeps):
+            mj_data.ctrl[:] = qpos[i - 1][7:]
+            mujoco.mj_step(mj_model, mj_data)
+        if save_video:
+            renderer.update_scene(mj_data, "track")
+            images.append(renderer.render())
+        qpos_rollout[i] = mj_data.qpos.copy()
+        qvel_rollout[i] = mj_data.qvel.copy()
+        ctrl_rollout[i] = mj_data.ctrl.copy()
+
+    # compute tracking error
+    pos_err = np.linalg.norm(qpos_rollout[:, :3] - qpos[:, :3], axis=1).mean()
+    quat_err_torch = quat_sub(
+        torch.from_numpy(qpos_rollout[:, 3:7]),
+        torch.from_numpy(qpos[:, 3:7]),
+    )
+    quat_err = np.linalg.norm(quat_err_torch.numpy(), axis=1).mean()
+    joint_err = np.linalg.norm(qpos_rollout[:, 7:] - qpos[:, 7:], axis=1).mean()
+    print(
+        f"rollout ik tracking error: \npos_err: {pos_err:.2f}\nquat_err: {quat_err:.2f}\njoint_err: {joint_err:.2f}"
+    )
+
+    # save ik data
+    np.savez(
+        f"{processed_dir}/trajectory_ik.npz",
+        qpos=qpos_rollout,
+        qvel=qvel_rollout,
+        ctrl=ctrl_rollout,
+    )
+
+    # save ik video
     if save_video:
         imageio.mimsave(f"{processed_dir}/visualization_ik.mp4", images, fps=fps)
         print(f"Saved video to {processed_dir}/visualization_ik.mp4")

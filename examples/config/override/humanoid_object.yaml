@@ -1,10 +1,10 @@
 # @package _global_
 # Override configuration for fair_mon dataset
-dataset_name: amass
+dataset_name: omomo
 robot_type: unitree_g1
 viewer: mujoco
-embodiment_type: humanoid
-task: sprint
+embodiment_type: humanoid_object
+task: move_largebox
 rerun_spawn: true
 sim_dt: 0.0166667
 ref_dt: 0.0333333
@@ -26,6 +26,8 @@ num_samples: 2048
 # reward
 vel_rew_scale: 0.0
 joint_rew_scale: 1.0
+base_pos_rew_scale: 1.0
+base_rot_rew_scale: 1.0
 pos_rew_scale: 3.0
 rot_rew_scale: 3.0
 # note: above parameter is optimized for speed. you can have better performance with horizon=1.0
