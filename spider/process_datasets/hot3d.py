@@ -1,5 +1,4 @@
-"""
-This script process hot3d dataset to our target format.
+"""This script process hot3d dataset to our target format.
 
 Process:
 1. Load object and hand pose data
@@ -21,20 +20,21 @@ Updated: 2025-01-27 (added wrist to root pose conversion)
 """
 
 import os
-import sys
-from pathlib import Path
-import loguru
 import pickle
-import numpy as np
-import torch
 import shutil
+import sys
 from contextlib import contextmanager
+from pathlib import Path
+
+import loguru
 import mujoco
 import mujoco.viewer
-from loop_rate_limiters import RateLimiter
-import tyro
-from scipy.spatial.transform import Rotation
+import numpy as np
 import pymeshlab
+import torch
+import tyro
+from loop_rate_limiters import RateLimiter
+from scipy.spatial.transform import Rotation
 
 # Add the imitation_learning_3d path to import HOT3D utilities
 sys.path.append("../../../imitation_learning_3d")
@@ -43,11 +43,12 @@ from robo3d.common.rotation_utils import from_homogeneous
 
 
 def convert_numpy_to_torch(input_dict):
-    """
-    Credit: hot3d dataset
+    """Credit: hot3d dataset
     Convert all numpy arrays in the input dictionary to PyTorch tensors with float32 data type.
+
     Args:
         input_dict (dict): The input dictionary containing numpy arrays.
+
     Returns:
         dict: A new dictionary with numpy arrays converted to PyTorch tensors.
     """
@@ -68,11 +69,9 @@ def convert_numpy_to_torch(input_dict):
 def load_data(
     hot3d_dir: str, object_id: str, sequence_id: int = 4, trajectory_id: int = 0
 ):
-    """
-    Load data from hot3d dataset for a specific trajectory ID within a sequence.
+    """Load data from hot3d dataset for a specific trajectory ID within a sequence.
     Loads pregrasp folders first, then postgrasp folders for the specified trajectory.
     """
-
     # Use the specified sequence (default trajectories4)
     base_path = Path(hot3d_dir) / f"trajectories{sequence_id}" / "data" / object_id
 
@@ -165,8 +164,7 @@ def load_data(
 def wrist_to_root_pose(
     wrist_pose_matrix, joint_angles, shape_params, hand_id, mano_model
 ):
-    """
-    Convert wrist pose to root pose (centered at root of middle finger).
+    """Convert wrist pose to root pose (centered at root of middle finger).
 
     Args:
         wrist_pose_matrix: 4x4 transformation matrix for wrist pose
@@ -192,8 +190,7 @@ def wrist_to_root_pose(
 def extract_hand_data_from_hot3d(
     hand_data, hand_id, mano_model, use_root_pose=False, T_global=np.eye(4)
 ):
-    """
-    Extract hand pose data from HOT3D format using MANO forward kinematics.
+    """Extract hand pose data from HOT3D format using MANO forward kinematics.
     Returns root/wrist pose and fingertip poses.
 
     Args:
@@ -278,9 +275,7 @@ def extract_hand_data_from_hot3d(
 
 
 def extract_object_data_from_hot3d(object_data):
-    """
-    Extract object pose from HOT3D object data.
-    """
+    """Extract object pose from HOT3D object data."""
     # Get object transformation matrix
     T_object = object_data["T_object"]  # Shape: (4, 4)
 
@@ -300,8 +295,7 @@ def extract_object_data_from_hot3d(object_data):
 
 
 def convert_glb_to_obj(glb_path: str, obj_path: str, assets_path: str) -> bool:
-    """
-    Convert GLB file to OBJ format using pymeshlab.
+    """Convert GLB file to OBJ format using pymeshlab.
 
     Args:
         glb_path: Path to the GLB file (relative to assets_path)
@@ -374,8 +368,7 @@ def main(
     save_video: bool = False,
     use_root_pose: bool = True,
 ):
-    """
-    Process hot3d dataset to our target format.
+    """Process hot3d dataset to our target format.
 
     Args:
         hot3d_dir: Path to HOT3D processed dataset
@@ -659,7 +652,7 @@ def main(
                 images.append(img)
 
             if cnt == (N - 1):
-                save_dir = f"../../datasets/raw/mano"
+                save_dir = "../../datasets/raw/mano"
                 if not os.path.exists(save_dir):
                     os.makedirs(save_dir)
 
