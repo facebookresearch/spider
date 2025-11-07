@@ -8,12 +8,12 @@ task: cat
 rerun_spawn: true
 ref_dt: 0.05
 max_sim_steps: -1
-horizon: 1.0
-ctrl_dt: 0.5
-knot_dt: 0.5
+horizon: 1.6
+ctrl_dt: 0.4
+knot_dt: 0.4
 num_dr: 1
 perturb_torque: 0.0
-pos_noise_scale: 0.1
+pos_noise_scale: 0.03
 rot_noise_scale: 0.05
 joint_noise_scale: 0.5
 improvement_threshold: 0.001
