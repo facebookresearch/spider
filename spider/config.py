@@ -94,6 +94,8 @@ class Config:
     rerun_spawn: bool = False
     save_video: bool = True
     save_info: bool = True
+    save_rerun: bool = False
+    save_metrics: bool = True
 
     # === TRACE RECORDING ===
     trace_dt: float = 1 / 50.0

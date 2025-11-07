@@ -2,7 +2,6 @@
 # Override configuration for fair_mon dataset
 dataset_name: amass
 robot_type: unitree_g1
-viewer: mujoco
 embodiment_type: humanoid
 task: sprint
 rerun_spawn: true

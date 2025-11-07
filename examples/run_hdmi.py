@@ -39,12 +39,12 @@ from spider.simulators.hdmi import (
     sync_env,
 )
 from spider.viewers import (
-    build_and_log_scene_from_spec,
     render_image,
     setup_renderer,
     setup_viewer,
     update_viewer,
 )
+from spider.viewers.rerun_viewer import log_frame
 
 
 def main(config: Config):
@@ -88,7 +88,18 @@ def main(config: Config):
     # env.scene.to_zip(Path(config.output_dir) / "../scene.zip")
 
     # Setup mujoco model and data from HDMI env (for rendering)
-    mj_model = env.sim.mj_model
+    default_xml_path = Path(
+        "example_datasets/processed/hdmi/unitree_g1/humanoid_object/move_suitcase/scene/mjlab scene.xml"
+    )
+    if default_xml_path.exists():
+        mj_model = mujoco.MjModel.from_xml_path(str(default_xml_path))
+        config.model_path = default_xml_path
+    else:
+        loguru.logger.warning(
+            f"Default XML path {default_xml_path} does not exist, using env model"
+        )
+        mj_model = env.sim.mj_model
+        config.model_path = "hdmi_scene_from_env"
     mj_data = mujoco.MjData(mj_model)
     mj_data_ref = mujoco.MjData(mj_model)
 
@@ -110,20 +121,27 @@ def main(config: Config):
     # Setup viewer and renderer
     # Note: mjlab viewer is disabled via cfg.viewer.headless in setup_env
     # For HDMI with rerun, build scene directly from spec and model
-    if "rerun" in config.viewer:
-        # Build and log 3D scene from HDMI's spec and model
-        loguru.logger.info("Building Rerun scene from HDMI spec and model...")
-        config.viewer_body_entity_and_ids = build_and_log_scene_from_spec(
-            spec=env.scene.spec,
-            model=mj_model,
-            xml_path=None,  # No XML file, HDMI creates scene programmatically
-            entity_root="mujoco",
-        )
-        loguru.logger.info(
-            f"Rerun scene built with {len(config.viewer_body_entity_and_ids)} body entities"
-        )
-        # Set model_path to dummy value to indicate scene is already built
-        config.model_path = "hdmi_scene_from_spec"
+    # if "rerun" in config.viewer:
+    #     # Build and log 3D scene from HDMI's spec and model
+    #     if default_xml_path.exists():
+    #         xml_path = default_xml_path
+    #     else:
+    #         loguru.logger.info(
+    #             f"Default scene path {default_xml_path} does not exist, using None"
+    #         )
+    #         xml_path = None
+    #     loguru.logger.info("Building Rerun scene from HDMI spec and model...")
+    #     config.viewer_body_entity_and_ids = build_and_log_scene_from_spec(
+    #         spec=mj_spec,
+    #         model=mj_model,
+    #         xml_path=xml_path,
+    #         entity_root="mujoco",
+    #     )
+    #     loguru.logger.info(
+    #         f"Rerun scene built with {len(config.viewer_body_entity_and_ids)} body entities"
+    #     )
+    #     # Set model_path to dummy value to indicate scene is already built
+    #     config.model_path = "hdmi_scene_from_spec"
 
     run_viewer = setup_viewer(config, mj_model, mj_data)
     renderer = setup_renderer(config, mj_model)
@@ -197,6 +215,13 @@ def main(config: Config):
                         config, renderer, mj_model, mj_data, mj_data_ref
                     )
                     images.append(image)
+                if "rerun" in config.viewer:
+                    # manually log the state
+                    log_frame(
+                        mj_data,
+                        sim_time=mj_data.time,
+                        viewer_body_entity_and_ids=config.viewer_body_entity_and_ids,
+                    )
 
                 # Record state info
                 step_info["qpos"].append(mj_data.qpos.copy())

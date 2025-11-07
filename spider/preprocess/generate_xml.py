@@ -20,9 +20,9 @@ def main(
     task: str = "pick_spoon_bowl",
     data_id: int = 0,
     hand_floor_collision: bool = False,
-    object_density: float = 1000,
-    object_armature: float = 0.0001,
-    object_frictionloss: float = 0.0001,
+    object_density: float = 3000,
+    object_armature: float = 0.001,
+    object_frictionloss: float = 0.01,
     show_viewer: bool = True,
 ):
     dataset_dir = os.path.abspath(dataset_dir)
@@ -442,7 +442,7 @@ def main(
 
     # add contact pairs
     default_solref = [0.02, 1]
-    default_friction = [1.0, 1, 0.1, 0.0, 0.0]
+    default_friction = [1.0, 1.0, 0.1, 0.0, 0.0]
     small_friction = [0.01, 0.01, 0.0001, 0.0, 0.0]
     # [thumb, index intermediate, index, middle, ring, pinky + floor] <-> object
     hand_collision_names = []

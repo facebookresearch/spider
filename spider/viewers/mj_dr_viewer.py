@@ -316,7 +316,7 @@ def main(
                     "qpos": data.qpos.copy(),
                     "qvel": data.qvel.copy(),
                     "ctrl": data.ctrl.copy(),
-                    "time": data.time,
+                    "sim_time": data.time,
                 }
                 if save_info:
                     info_list.append(info)

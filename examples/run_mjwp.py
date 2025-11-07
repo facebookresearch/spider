@@ -43,6 +43,7 @@ from spider.simulators.mjwp import (
     sync_env,
 )
 from spider.viewers import render_image, setup_renderer, setup_viewer, update_viewer
+from spider.viewers.rerun_viewer import log_frame
 
 
 def main(config: Config):
@@ -165,6 +166,13 @@ def main(config: Config):
                             config, renderer, mj_model, mj_data, mj_data_ref
                         )
                         images.append(image)
+                if "rerun" in config.viewer:
+                    # manually log the state
+                    log_frame(
+                        mj_data,
+                        sim_time=mj_data.time,
+                        viewer_body_entity_and_ids=config.viewer_body_entity_and_ids,
+                    )
                 step_info["qpos"].append(mj_data.qpos.copy())
                 step_info["qvel"].append(mj_data.qvel.copy())
                 step_info["time"].append(mj_data.time)

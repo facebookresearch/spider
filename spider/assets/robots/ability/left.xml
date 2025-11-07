@@ -5,9 +5,12 @@
     <!-- disable all contacts and use explicit collision pairs -->
     <geom density="800" condim="1" contype="0" conaffinity="0" />
     <!-- with this setting, the response time is around 1s -->
-    <position kp="300" dampratio="1.0" inheritrange="1" />
+    <position kp="100" dampratio="1.0" inheritrange="1" />
     <joint damping="0.0" armature="1.0" frictionloss="0.0" />
     <site size="0.01" type="sphere" rgba="1 0 0 1" group="3" />
+    <default class="base">
+      <position kp="300" dampratio="3.0" inheritrange="1" />
+    </default>
   </default>
 
   <asset>
@@ -294,12 +297,12 @@
   </worldbody>
   <actuator>
     <!-- Global position and rotation joints -->
-    <position name="R_forearm_tx_position" joint="R_forearm_tx_link_joint" kp="1000" />
-    <position name="R_forearm_ty_position" joint="R_forearm_ty_link_joint" kp="1000" />
-    <position name="R_forearm_tz_position" joint="R_forearm_tz_link_joint" kp="1000" />
-    <position name="R_forearm_roll_position" joint="R_forearm_roll_link_joint" kp="1000" />
-    <position name="R_forearm_pitch_position" joint="R_forearm_pitch_link_joint" kp="1000" />
-    <position name="R_forearm_yaw_position" joint="R_forearm_yaw_link_joint" kp="1000" />
+    <position class="base" name="R_forearm_tx_position" joint="R_forearm_tx_link_joint" />
+    <position class="base" name="R_forearm_ty_position" joint="R_forearm_ty_link_joint" />
+    <position class="base" name="R_forearm_tz_position" joint="R_forearm_tz_link_joint" />
+    <position class="base" name="R_forearm_roll_position" joint="R_forearm_roll_link_joint" />
+    <position class="base" name="R_forearm_pitch_position" joint="R_forearm_pitch_link_joint" />
+    <position class="base" name="R_forearm_yaw_position" joint="R_forearm_yaw_link_joint" />
 
     <!-- Thumb joints -->
     <position name="left_thumb_q1_position" joint="left_thumb_q1" />

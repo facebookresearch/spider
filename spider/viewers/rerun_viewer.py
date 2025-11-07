@@ -36,10 +36,10 @@ DEFAULT_TRACE_COLOR = [204, 26, 204]  # ~ (0.8, 0.1, 0.8)
 DEFAULT_LEFT_OBJECT_TRACE_COLOR = "#0081FB"
 DEFAULT_RIGHT_OBJECT_TRACE_COLOR = "#FB7A00"
 DEFAULT_OBJECT_TRACE_COLOR = [187, 220, 229]  # Default object color
-DEFAULT_FLOOR_COLOR = [211, 211, 211]  # light grey
+DEFAULT_FLOOR_COLOR = [200, 200, 200]  # light grey
 DEFAULT_OBJECT_COLOR = [100, 149, 237]  # slightly darker blue
 DEFAULT_HAND_COLOR = [200, 200, 200]  # grey
-DEFAULT_TRACE_RADIUS = 0.0003
+DEFAULT_TRACE_RADIUS = 0.005
 
 
 # -----------------------------
@@ -143,7 +143,9 @@ def _mujoco_mesh_to_trimesh(
             loguru.logger.debug(f"Mesh has {texcoord_num} texture coordinates")
 
         # Extract texture coordinates
-        texcoords_flat = model.mesh_texcoord[texcoord_adr : texcoord_adr + texcoord_num * 2]
+        texcoords_flat = model.mesh_texcoord[
+            texcoord_adr : texcoord_adr + texcoord_num * 2
+        ]
         texcoords = texcoords_flat.reshape(-1, 2)
 
         # Get per-face texture coordinate indices
@@ -194,7 +196,9 @@ def _mujoco_mesh_to_trimesh(
                         material = trimesh.visual.material.PBRMaterial(
                             baseColorFactor=rgba, baseColorTexture=image
                         )
-                        mesh.visual = trimesh.visual.TextureVisuals(uv=new_uvs, material=material)
+                        mesh.visual = trimesh.visual.TextureVisuals(
+                            uv=new_uvs, material=material
+                        )
                         if verbose:
                             loguru.logger.debug(
                                 f"Applied texture: {tex_width}x{tex_height}, {tex_nchannel} channels"
@@ -244,7 +248,9 @@ def _mujoco_mesh_to_trimesh(
     return mesh
 
 
-def _trimesh_from_primitive(geom_type: int, size: np.ndarray, rgba: np.ndarray | None = None) -> trimesh.Trimesh | None:
+def _trimesh_from_primitive(
+    geom_type: int, size: np.ndarray, rgba: np.ndarray | None = None
+) -> trimesh.Trimesh | None:
     """Create a trimesh mesh for a MuJoCo primitive geom.
 
     - sphere: size[0] radius
@@ -347,7 +353,7 @@ def _get_entity_color(entity_name: str) -> np.ndarray:
         return np.array(DEFAULT_OBJECT_COLOR, dtype=np.uint8)
     else:
         # Default fallback color (gray)
-        return np.array([128, 128, 128], dtype=np.uint8)
+        return np.array([240, 240, 240], dtype=np.uint8)
 
 
 def _vertex_colors_from_rgba(
@@ -428,7 +434,9 @@ def build_and_log_scene_from_spec(
     for geom_id in range(model.ngeom):
         body_id = model.geom_bodyid[geom_id]
         # Count how many geoms we've seen for this body so far
-        geom_index = sum(1 for gid in range(geom_id) if model.geom_bodyid[gid] == body_id)
+        geom_index = sum(
+            1 for gid in range(geom_id) if model.geom_bodyid[gid] == body_id
+        )
         geom_by_body_index[(body_id, geom_index)] = geom_id
 
     # Iterate bodies and geoms
@@ -465,7 +473,9 @@ def build_and_log_scene_from_spec(
             # (these are likely invalid or placeholder geoms)
             if not geom.name and model_geom_id < 0:
                 skipped_count += 1
-                loguru.logger.debug(f"Skipping unnamed geom {geom_name} (no model geom found)")
+                loguru.logger.debug(
+                    f"Skipping unnamed geom {geom_name} (no model geom found)"
+                )
                 continue
 
             # Group ALL geoms by collision vs visual based on name
@@ -495,7 +505,9 @@ def build_and_log_scene_from_spec(
                 # Try using compiled model's mesh data (better texture support)
                 if model_geom_id >= 0:
                     try:
-                        tm = _mujoco_mesh_to_trimesh(model, model_geom_id, verbose=False)
+                        tm = _mujoco_mesh_to_trimesh(
+                            model, model_geom_id, verbose=False
+                        )
                     except Exception as e:
                         loguru.logger.debug(
                             f"Failed to convert mesh geom {geom_name} using model: {e}"
@@ -530,10 +542,11 @@ def build_and_log_scene_from_spec(
                                 if scale is not None:
                                     tm.apply_scale(scale)
                             except Exception as e:
-                                loguru.logger.debug(f"Failed to load mesh {mesh_file}: {e}")
+                                loguru.logger.debug(
+                                    f"Failed to load mesh {mesh_file}: {e}"
+                                )
 
                 if tm is None:
-                    # Skip mesh geoms that couldn't be loaded (instead of warning)
                     continue
 
             else:
@@ -631,12 +644,15 @@ def build_and_log_scene(
         rr.log(collision_body_entity, rr.Transform3D())
         rr.log(visual_body_entity, rr.Transform3D())
 
+        filter_geom_names = ["terrain"]
         for geom in body.geoms:
             geom_name = (
                 geom.name
                 if geom.name
                 else f"geom_{abs(hash((body_name, id(geom)))) % 10_000}"
             )
+            if geom.name in filter_geom_names:
+                continue
 
             # Group ALL geoms by collision vs visual based on name
             group_path = _get_mesh_group_path(geom_name, entity_root)
@@ -1164,7 +1180,9 @@ def _log_trimesh_entity(
 
     # Validate mesh has data
     if len(vertex_positions) == 0 or len(triangle_indices) == 0:
-        loguru.logger.warning(f"Skipping {entity_path}: empty mesh (verts={len(vertex_positions)}, faces={len(triangle_indices)})")
+        loguru.logger.warning(
+            f"Skipping {entity_path}: empty mesh (verts={len(vertex_positions)}, faces={len(triangle_indices)})"
+        )
         return
 
     vertex_normals = (
@@ -1178,25 +1196,36 @@ def _log_trimesh_entity(
     albedo_factor = None
 
     # Check if mesh has visual data
-    if hasattr(mesh, 'visual') and mesh.visual is not None:
+    if hasattr(mesh, "visual") and mesh.visual is not None:
         # Try to get vertex colors from the mesh visual
         if isinstance(mesh.visual, trimesh.visual.ColorVisuals):
             # ColorVisuals has vertex_colors attribute
-            if hasattr(mesh.visual, 'vertex_colors') and mesh.visual.vertex_colors is not None:
+            if (
+                hasattr(mesh.visual, "vertex_colors")
+                and mesh.visual.vertex_colors is not None
+            ):
                 vc = np.asarray(mesh.visual.vertex_colors, dtype=np.uint8)
                 if vc.shape[0] == len(vertex_positions):
                     vertex_colors = vc
         elif isinstance(mesh.visual, trimesh.visual.TextureVisuals):
             # TextureVisuals might have a material with baseColorFactor
-            if hasattr(mesh.visual, 'material') and mesh.visual.material is not None:
+            if hasattr(mesh.visual, "material") and mesh.visual.material is not None:
                 material = mesh.visual.material
-                if hasattr(material, 'baseColorFactor'):
+                if hasattr(material, "baseColorFactor"):
                     base_color = np.asarray(material.baseColorFactor, dtype=np.float32)
                     if base_color.size >= 3:
                         # Convert float [0,1] to uint8 [0,255]
-                        albedo_factor = (base_color[:4] * 255).astype(np.uint8) if base_color.size >= 4 else np.concatenate([base_color[:3] * 255, [255]]).astype(np.uint8)
+                        albedo_factor = (
+                            (base_color[:4] * 255).astype(np.uint8)
+                            if base_color.size >= 4
+                            else np.concatenate([base_color[:3] * 255, [255]]).astype(
+                                np.uint8
+                            )
+                        )
                         # Create per-vertex colors
-                        vertex_colors = np.tile(albedo_factor, (len(vertex_positions), 1))
+                        vertex_colors = np.tile(
+                            albedo_factor, (len(vertex_positions), 1)
+                        )
 
     # Fallback to entity-based default color if no visual data found
     if vertex_colors is None and albedo_factor is None:
@@ -1211,7 +1240,11 @@ def _log_trimesh_entity(
             triangle_indices=triangle_indices,
             vertex_normals=vertex_normals,
             vertex_colors=vertex_colors,
-            albedo_factor=albedo_factor if albedo_factor is not None else vertex_colors[0] if vertex_colors is not None else None,
+            albedo_factor=albedo_factor
+            if albedo_factor is not None
+            else vertex_colors[0]
+            if vertex_colors is not None
+            else None,
         ),
         static=True,
     )

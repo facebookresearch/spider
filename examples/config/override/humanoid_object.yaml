@@ -2,7 +2,7 @@
 # Override configuration for fair_mon dataset
 dataset_name: omomo
 robot_type: unitree_g1
-viewer: mujoco
+viewer: mujoco-rerun
 embodiment_type: humanoid_object
 task: move_largebox
 rerun_spawn: true

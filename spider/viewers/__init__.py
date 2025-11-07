@@ -4,6 +4,7 @@ Author: Chaoyi Pan
 Date: 2025-08-10
 """
 
+import os
 import sys
 from contextlib import contextmanager
 from pathlib import Path
@@ -34,6 +35,30 @@ def setup_viewer(config: Config, mj_model: mujoco.MjModel, mj_data: mujoco.MjDat
     if "rerun" in config.viewer:
         # setup rerun viewer
         init_rerun(app_name="spider", spawn=config.rerun_spawn)
+        if config.save_rerun:
+            if not os.path.exists("tmp"):
+                os.makedirs("tmp")
+            if os.path.exists("tmp/spider.rbl"):
+                # Load blueprint from .rbl file
+                # Note: Blueprint.from_file() doesn't exist in rerun 0.25.1
+                # The .rbl file can be loaded as an archive, but extracting the blueprint
+                # requires version 0.26.0+ features. For now, we'll load it and send it
+                # via the bindings if possible.
+                try:
+                    import rerun_bindings as bindings
+
+                    # Load the blueprint archive - this makes the blueprint available
+                    # to the viewer when the .rrd file is opened
+                    bindings.load_archive("tmp/spider.rbl")
+                    loguru.logger.info("Loaded blueprint archive from tmp/spider.rbl")
+                    # Note: The blueprint will be available when viewing the .rrd file
+                    # but we can't easily convert it to a Blueprint object in this version
+                except Exception as e:
+                    loguru.logger.warning(
+                        f"Failed to load blueprint from tmp/spider.rbl: {e}. "
+                        "Continuing without custom blueprint."
+                    )
+            rr.save("tmp/rerun_data.rrd")
         if mj_model is not None and config.model_path is not None:
             # Check if scene is already built (from spec)
             if config.model_path == "hdmi_scene_from_spec":
@@ -121,33 +146,34 @@ def update_viewer(
             log_traces_from_info(info["trace_sample"], sim_time=mj_data.time)
 
         # Log scalar metrics (improvement, rew_max, rew_min, rew_median) as continuous time series
-        for k, v in info.items():
-            # skip trace related metrics
-            if "trace" in k:
-                continue
-            if not isinstance(v, np.ndarray):
-                continue
-            # show scalar metrics
-            if v.shape == (config.max_num_iterations,):
-                # Extract metric base name (e.g., "rew" from "rew_max")
-                metric_base = k.rsplit("_", 1)[0] if "_" in k else k
+        if config.save_metrics:
+            for k, v in info.items():
+                # skip trace related metrics
+                if "trace" in k:
+                    continue
+                if not isinstance(v, np.ndarray):
+                    continue
+                # show scalar metrics
+                if v.shape == (config.max_num_iterations,):
+                    # Extract metric base name (e.g., "rew" from "rew_max")
+                    metric_base = k.rsplit("_", 1)[0] if "_" in k else k
 
-                for it in range(config.max_num_iterations):
-                    start_sim_time = mj_data.time
-                    end_sim_time = mj_data.time + config.ctrl_dt
-                    plan_time = start_sim_time + (it / config.max_num_iterations) * (
-                        end_sim_time - start_sim_time
-                    )
-                    rr.set_time("sim_time", timestamp=plan_time)
-                    rr.log(f"metrics/{metric_base}/{k}", rr.Scalars([float(v[it])]))
-            # show state metrics
-            if v.shape[0] == config.ctrl_steps and v.ndim == 2:
-                rr.set_time("sim_time", timestamp=mj_data.time)
-                for dim_idx in range(v.shape[1]):
-                    rr.log(
-                        f"metrics/{k}/dim_{dim_idx}",
-                        rr.Scalars([float(v[-1, dim_idx])]),
-                    )
+                    for it in range(config.max_num_iterations):
+                        start_sim_time = mj_data.time
+                        end_sim_time = mj_data.time + config.ctrl_dt
+                        plan_time = start_sim_time + (
+                            it / config.max_num_iterations
+                        ) * (end_sim_time - start_sim_time)
+                        rr.set_time("sim_time", timestamp=plan_time)
+                        rr.log(f"metrics/{metric_base}/{k}", rr.Scalars([float(v[it])]))
+                # show state metrics
+                if v.shape[0] == config.ctrl_steps and v.ndim == 2:
+                    rr.set_time("sim_time", timestamp=mj_data.time)
+                    for dim_idx in range(v.shape[1]):
+                        rr.log(
+                            f"metrics/{k}/dim_{dim_idx}",
+                            rr.Scalars([float(v[-1, dim_idx])]),
+                        )
 
 
 def setup_renderer(config: Config, mj_model: mujoco.MjModel):
@@ -180,7 +206,7 @@ def render_image(
         (10, 30),
         cv2.FONT_HERSHEY_SIMPLEX,
         1,
-        (255, 255, 255),
+        (128, 128, 128),
         2,
     )
     # render ref
@@ -197,7 +223,7 @@ def render_image(
         (10, 30),
         cv2.FONT_HERSHEY_SIMPLEX,
         1,
-        (255, 255, 255),
+        (128, 128, 128),
         2,
     )
     image = np.concatenate([ref_image, sim_image], axis=1)

@@ -19,10 +19,10 @@ simulator: mjwp # "isaac" | "mujoco" | "mjwp" | "mjwp_cons" | "mjwp_eq" | "mjwp_
 device: cuda:0
 # Simulation timing
 sim_dt: 0.01 # simulation timestep
-ctrl_dt: 0.2 # control timestep
+ctrl_dt: 0.4 # control timestep
 ref_dt: 0.02 # reference data timestep (1/50.0)
 render_dt: 0.02 # rendering timestep
-horizon: 1.2 # planning horizon
+horizon: 1.6 # planning horizon
 knot_dt: 0.4 # knot point spacing
 max_sim_steps: -1 # maximum simulation steps (-1 for unlimited)
 # Simulation constraints
@@ -40,8 +40,8 @@ perturb_torque: 0.0
 # === OPTIMIZER CONFIGURATION ===
 # Sampling parameters
 num_samples: 1024
-temperature: 1.0
-max_num_iterations: 16
+temperature: 0.1
+max_num_iterations: 32
 improvement_threshold: 0.01
 # Noise scheduling
 first_ctrl_noise_scale: 0.5
@@ -51,22 +51,24 @@ exploit_ratio: 0.01
 exploit_noise_scale: 0.01
 # Noise scaling by component
 joint_noise_scale: 0.3
-pos_noise_scale: 0.003
-rot_noise_scale: 0.003
+pos_noise_scale: 0.01
+rot_noise_scale: 0.03
 # Reward scaling
 base_pos_rew_scale: 0.03
 base_rot_rew_scale: 0.01
-joint_rew_scale: 0.003
+joint_rew_scale: 0.1
 pos_rew_scale: 1.0
-rot_rew_scale: 0.1
+rot_rew_scale: 0.3
 vel_rew_scale: 0.0001
 terminal_rew_scale: 1.0
 
 # === VISUALIZATION CONFIGURATION ===
 show_viewer: true
-viewer: mujoco # "mujoco" | "rerun" | "isaac"
-rerun_spawn: false
+viewer: mujoco-rerun # "mujoco" | "rerun" | "isaac"
+rerun_spawn: true
 save_video: true
+save_rerun: false
+save_metrics: true
 save_info: true
 
 # === TRACE RECORDING ===

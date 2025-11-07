@@ -77,14 +77,14 @@ def setup_mj_model(config: Config) -> mujoco.MjModel:
         model_cpu.opt.ls_iterations = 50
         model_cpu.opt.o_solref = [0.02, 1.0]
         model_cpu.opt.o_solimp = [
-            0.9,
+            0.0,
             0.95,
-            0.001,
+            0.03,
             0.5,
             2,
         ]  # softer contact for sim2real
         model_cpu.opt.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
-    elif config.embodiment_type in ["humanoid"]:
+    elif config.embodiment_type in ["humanoid", "humanoid_object"]:
         # setup for humanoid
         model_cpu.opt.iterations = 2
         model_cpu.opt.ls_iterations = 10

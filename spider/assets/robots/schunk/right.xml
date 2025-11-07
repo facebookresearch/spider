@@ -11,10 +11,10 @@
   </default>
 
   <asset>
-    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512"
+    <texture type="skybox" builtin="gradient" rgb1="1.0 1.0 1.0" rgb2="1.0 1.0 1.0" width="512"
       height="3072" />
-    <texture type="2d" name="right_groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4"
-      rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8" width="300" height="300" />
+    <texture type="2d" name="right_groundplane" builtin="checker" mark="edge" rgb1="1 1 1"
+      rgb2="1 1 1" markrgb="0.8 0.8 0.8" width="300" height="300" />
     <material name="right_groundplane" texture="right_groundplane" texuniform="true" texrepeat="5 5"
       reflectance="0.2" />
     <mesh name="right_d11" content_type="model/obj" file="d11.obj" />
