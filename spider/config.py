@@ -65,8 +65,10 @@ class Config:
     max_num_iterations: int = 16
     improvement_threshold: float = 0.01
     improvement_check_steps: int = 1
-    num_resamples: int = 0  # if resample to get rid of bad samples
-    resample_ratio: float = 0.2  # ratio of resamples to num_samples
+    # Termination parameters
+    terminate_resample: bool = True
+    object_pos_threshold: float = 0.03
+    object_rot_threshold: float = 0.1
     # Compilation
     use_torch_compile: bool = True  # use torch.compile for acceleration
     # Noise scheduling

@@ -39,7 +39,7 @@ DEFAULT_OBJECT_TRACE_COLOR = [187, 220, 229]  # Default object color
 DEFAULT_FLOOR_COLOR = [200, 200, 200]  # light grey
 DEFAULT_OBJECT_COLOR = [100, 149, 237]  # slightly darker blue
 DEFAULT_HAND_COLOR = [200, 200, 200]  # grey
-DEFAULT_TRACE_RADIUS = 0.005
+DEFAULT_TRACE_RADIUS = 0.002
 
 
 # -----------------------------

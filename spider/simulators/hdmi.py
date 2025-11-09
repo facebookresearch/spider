@@ -431,6 +431,12 @@ def get_reward(
     return total_reward, info
 
 
+def get_terminate(
+    config: Config, env, ref_slice: tuple[torch.Tensor, ...]
+) -> torch.Tensor:
+    return torch.zeros(env.num_envs, device=env.device)
+
+
 def get_terminal_reward(
     config: Config,
     env,

@@ -54,13 +54,17 @@ joint_noise_scale: 0.3
 pos_noise_scale: 0.01
 rot_noise_scale: 0.03
 # Reward scaling
-base_pos_rew_scale: 0.03
-base_rot_rew_scale: 0.01
+base_pos_rew_scale: 0.1
+base_rot_rew_scale: 0.1
 joint_rew_scale: 0.1
 pos_rew_scale: 1.0
 rot_rew_scale: 0.3
 vel_rew_scale: 0.0001
 terminal_rew_scale: 1.0
+# Termination threshold
+terminate_resample: false
+object_pos_threshold: 0.1 # meters
+object_rot_threshold: 0.3 # radians
 
 # === VISUALIZATION CONFIGURATION ===
 show_viewer: true

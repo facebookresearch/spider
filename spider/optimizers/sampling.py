@@ -75,6 +75,7 @@ def make_rollout_fn(
     load_state,
     get_reward,
     get_terminal_reward,
+    get_terminate,
     get_trace,
     save_env_params,
     load_env_params,
@@ -129,28 +130,44 @@ def make_rollout_fn(
             trace_list.append(trace)
             info_list.append(info)
             # Resampling: replace bad samples with good samples periodically
-            if config.num_resamples > 0 and t < H - 1:
-                if (t + 1) % np.ceil(H // (config.num_resamples + 1)) == 0:
-                    num_resamples = int(config.num_samples * config.resample_ratio)
+            terminate = get_terminate(config, env, ref)
+            if (
+                config.terminate_resample
+                and t < H - 1
+                and terminate.any()
+                and (not terminate.all())
+            ):
+                # if terminate.all():
+                #     # if all terminate, replace low reward samples with high reward samples
+                #     # top indices: top 50% samples
+                #     good_indices = torch.topk(
+                #         cum_rew, k=int(0.5 * config.num_samples), largest=True
+                #     ).indices
+                #     bad_indices = torch.topk(
+                #         cum_rew, k=int(0.5 * config.num_samples), largest=False
+                #     ).indices
+                # else:
+                # bad indices is terminate
+                bad_indices = torch.nonzero(terminate).squeeze(-1)
+                good_indices = torch.nonzero(~terminate).squeeze(-1)
+                # make sure good indices shape is the same as bad indices
+                if good_indices.shape[0] > bad_indices.shape[0]:
+                    good_indices = good_indices[: bad_indices.shape[0]]
+                elif good_indices.shape[0] < bad_indices.shape[0]:
+                    random_idx = torch.randint(
+                        0, good_indices.shape[0], (bad_indices.shape[0],)
+                    )
+                    good_indices = good_indices[random_idx]
 
-                    # Get bad samples (lowest rewards)
-                    bad_indices = torch.topk(
-                        cum_rew, k=num_resamples, largest=False
-                    ).indices
+                # Replace bad sample simulation state with good sample simulation state
+                copy_sample_state(config, env, good_indices, bad_indices)
 
-                    # Get good samples (highest rewards)
-                    good_indices = torch.topk(
-                        cum_rew, k=num_resamples, largest=True
-                    ).indices
+                # Replace bad samples control with good samples (for initial control and current timestep only)
+                ctrls[bad_indices, :t] = ctrls[good_indices, :t]
 
-                    # Replace bad sample simulation state with good sample simulation state
-                    copy_sample_state(config, env, good_indices, bad_indices)
+                # Replace bad samples cumulative reward with good samples reward
+                cum_rew[bad_indices] = cum_rew[good_indices]
 
-                    # Replace bad samples control with good samples (for initial control and current timestep only)
-                    ctrls[bad_indices, :t] = ctrls[good_indices, :t]
-
-                    # Replace bad samples cumulative reward with good samples reward
-                    cum_rew[bad_indices] = cum_rew[good_indices]
         info_combined = {
             k: torch.stack([info[k] for info in info_list], axis=0)
             for k in info_list[0].keys()
@@ -170,8 +187,7 @@ def make_rollout_fn(
             "trace": trace_list,  # (N, H, n_trace, 3)
             **mean_info,
         }
-
-        return ctrls, mean_rew, info
+        return ctrls, mean_rew, terminate, info
 
     return rollout
 
@@ -248,7 +264,7 @@ def make_optimize_once_fn(
         # domain randomization: pick the minimum reward across all DR parameter sets
         min_rew = torch.full((config.num_samples,), float("inf"), device=config.device)
         for env_param in env_params:
-            ctrls_samples, rews, rollout_info = rollout(
+            ctrls_samples, rews, terminate, rollout_info = rollout(
                 config,
                 env,
                 ctrls_samples,
@@ -258,6 +274,8 @@ def make_optimize_once_fn(
             min_rew = torch.minimum(min_rew, rews)
         # Use worst-case rewards across DR parameter sets
         rews = min_rew
+
+        # resample based on terminate condition
 
         # Compute weights using compiled or non-compiled version
         if config.use_torch_compile:
@@ -327,7 +345,7 @@ def make_optimize_once_fn(
                 rollout_info["trace"][sel_idx].cpu().numpy()
             )  # (M, H, n_trace, 3)
 
-        return ctrls_mean, info
+        return ctrls_mean, terminate, info
 
     return optimize_once
 
@@ -355,7 +373,7 @@ def make_optimize_fn(
         # optimize
         improvement_history = []
         for i in range(config.max_num_iterations):
-            ctrls, info = optimize_once(
+            ctrls, terminate, info = optimize_once(
                 config,
                 env,
                 ctrls,
@@ -367,7 +385,9 @@ def make_optimize_fn(
             improvement_history.append(info["improvement"])
 
             # early stopping: check if last n steps all have improvement below threshold
-            if len(improvement_history) >= config.improvement_check_steps:
+            if (len(improvement_history) >= config.improvement_check_steps) and (
+                not terminate.all()
+            ):
                 recent_improvements = improvement_history[
                     -config.improvement_check_steps :
                 ]

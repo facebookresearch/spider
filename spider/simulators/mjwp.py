@@ -320,6 +320,64 @@ def get_terminal_reward(
     return terminal_rew, info
 
 
+def get_terminate(
+    config: Config, env: MJWPEnv, ref_slice: tuple[torch.Tensor, ...]
+) -> torch.Tensor:
+    # compute object position and orientation error, compare to thereshold
+    qpos_sim = wp.to_torch(env.data_wp.qpos)
+    qpos_ref, qvel_ref, ctrl_ref, contact_ref, _contact_pos_ref = ref_slice
+    if config.embodiment_type == "bimanual":
+        left_obj_pos = qpos_sim[:, -14:-11]
+        left_obj_pos_ref = qpos_ref[-14:-11].unsqueeze(0)
+        left_obj_pos_error = torch.norm(left_obj_pos - left_obj_pos_ref, p=2, dim=1)
+        left_obj_quat = qpos_sim[:, -11:-7]
+        left_obj_quat_ref = qpos_ref[-11:-7].unsqueeze(0)
+        left_obj_quat_error = torch.norm(
+            quat_sub(left_obj_quat, left_obj_quat_ref.repeat(qpos_sim.shape[0], 1)),
+            p=2,
+            dim=1,
+        )
+        right_obj_pos = qpos_sim[:, -7:-4]
+        right_obj_pos_ref = qpos_ref[-7:-4].unsqueeze(0)
+        right_obj_pos_error = torch.norm(right_obj_pos - right_obj_pos_ref, p=2, dim=1)
+        right_obj_quat = qpos_sim[:, -4:]
+        right_obj_quat_ref = qpos_ref[-4:].unsqueeze(0)
+        right_obj_quat_error = torch.norm(
+            quat_sub(right_obj_quat, right_obj_quat_ref.repeat(qpos_sim.shape[0], 1)),
+            p=2,
+            dim=1,
+        )
+        # special case: only have left object
+        if torch.all(right_obj_pos_ref.abs() < 1e-4):
+            right_obj_pos_error *= 0.0
+            right_obj_quat_error *= 0.0
+        # special case: only have right object
+        if torch.all(left_obj_pos_ref.abs() < 1e-4):
+            left_obj_pos_error *= 0.0
+            left_obj_quat_error *= 0.0
+        terminate = (
+            (left_obj_pos_error > config.object_pos_threshold)
+            | (right_obj_pos_error > config.object_pos_threshold)
+            | (left_obj_quat_error > config.object_rot_threshold)
+            | (right_obj_quat_error > config.object_rot_threshold)
+        )
+    elif config.embodiment_type in ["right", "left"]:
+        obj_pos = qpos_sim[:, -7:-4]
+        obj_pos_ref = qpos_ref[-7:-4].unsqueeze(0)
+        obj_pos_error = torch.norm(obj_pos - obj_pos_ref, p=2, dim=1)
+        obj_quat = qpos_sim[:, -4:]
+        obj_quat_ref = qpos_ref[-4:].unsqueeze(0)
+        obj_quat_error = torch.norm(
+            quat_sub(obj_quat, obj_quat_ref.repeat(qpos_sim.shape[0], 1)), p=2, dim=1
+        )
+        terminate = (obj_pos_error > config.object_pos_threshold) | (
+            obj_quat_error > config.object_rot_threshold
+        )
+    else:
+        raise ValueError(f"Invalid embodiment_type: {config.embodiment_type}")
+    return terminate
+
+
 def get_qpos(config: Config, env: MJWPEnv) -> torch.Tensor:
     return wp.to_torch(env.data_wp.qpos)
 

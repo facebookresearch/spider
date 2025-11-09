@@ -509,6 +509,12 @@ def get_reward(
     return reward, info
 
 
+def get_terminate(
+    config: Config, env: BaseEnv, ref_slice: tuple[torch.Tensor, ...]
+) -> torch.Tensor:
+    return torch.zeros(env.num_envs, device=env.device)
+
+
 def get_terminal_reward(
     config: Config,
     env: BaseEnv,
@@ -627,7 +633,9 @@ def load_env_params(config: Config, env: BaseEnv, env_param: dict):
     return env
 
 
-def copy_sample_state(config: Config, env: BaseEnv, src_indices: torch.Tensor, dst_indices: torch.Tensor):
+def copy_sample_state(
+    config: Config, env: BaseEnv, src_indices: torch.Tensor, dst_indices: torch.Tensor
+):
     """Copy simulation state from source samples to destination samples.
 
     Args:
