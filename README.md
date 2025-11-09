@@ -74,3 +74,10 @@ uv run spider/preprocess/ik.py --task=${TASK} --dataset-name=fair_mon --data-id=
 # retargeting
 uv run examples/run_mjwp.py +override=fair_mon
 ```
+
+## Remote Development
+
+```bash
+# start rerun server
+uv run rerun --serve-web --port 9876
+```

@@ -137,15 +137,15 @@ def setup_env(config: Config, ref_data: tuple[torch.Tensor, ...]) -> MJWPEnv:
             model_cpu,
             data_cpu,
             nworld=int(config.num_samples),
-            nconmax=int(config.nconmax_per_env * config.num_samples),
-            njmax=int(config.njmax_per_env),
+            # nconmax=int(config.nconmax_per_env * config.num_samples),
+            # njmax=int(config.njmax_per_env),
         )
         data_wp_prev = mjwarp.put_data(
             model_cpu,
             data_cpu,
             nworld=int(config.num_samples),
-            nconmax=int(config.nconmax_per_env * config.num_samples),
-            njmax=int(config.njmax_per_env),
+            # nconmax=int(config.nconmax_per_env * config.num_samples),
+            # njmax=int(config.njmax_per_env),
         )
         default_graph = _compile_step(default_model_wp, default_data_wp)
 
