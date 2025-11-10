@@ -162,7 +162,7 @@ def main(
     task: str = "pick_spoon_bowl",
     show_viewer: bool = True,
     save_video: bool = False,
-    enable_collision: bool = True,
+    enable_collision: bool = False,
     start_idx: int = 0,
     end_idx: int = -1,
     sim_dt: float = 0.01,
@@ -177,6 +177,7 @@ def main(
     max_num_initial_guess: int = 8,
     average_frame_size: int = 3,
     aggregate_contact: bool = True,
+    z_offset: float = 0.0,
 ):
     # resolved processed directories
     dataset_dir = os.path.abspath(dataset_dir)
@@ -204,15 +205,15 @@ def main(
 
     file_path = f"{processed_dir_mano}/trajectory_keypoints.npz"
     loaded_data = np.load(file_path)
-    qpos_finger_right = loaded_data["qpos_finger_right"]
-    qpos_finger_left = loaded_data["qpos_finger_left"]
-    qpos_wrist_right = loaded_data["qpos_wrist_right"]
-    qpos_wrist_left = loaded_data["qpos_wrist_left"]
-    qpos_obj_right = loaded_data["qpos_obj_right"]
-    qpos_obj_left = loaded_data["qpos_obj_left"]
+    qpos_finger_right = loaded_data["qpos_finger_right"][start_idx:end_idx]
+    qpos_finger_left = loaded_data["qpos_finger_left"][start_idx:end_idx]
+    qpos_wrist_right = loaded_data["qpos_wrist_right"][start_idx:end_idx]
+    qpos_wrist_left = loaded_data["qpos_wrist_left"][start_idx:end_idx]
+    qpos_obj_right = loaded_data["qpos_obj_right"][start_idx:end_idx]
+    qpos_obj_left = loaded_data["qpos_obj_left"][start_idx:end_idx]
     try:
-        contact_left = loaded_data["contact_left"]
-        contact_right = loaded_data["contact_right"]
+        contact_left = loaded_data["contact_left"][start_idx:end_idx]
+        contact_right = loaded_data["contact_right"][start_idx:end_idx]
     except:
         loguru.logger.warning("No contact data found, using all one")
         contact_left = np.ones((qpos_finger_right.shape[0], 5))
@@ -246,6 +247,7 @@ def main(
         ],
         axis=1,
     )
+    qpos_ref[:, :, 2] += z_offset
 
     # load model
     mj_model = mujoco.MjModel.from_xml_path(model_path)
@@ -702,7 +704,7 @@ def main(
                 f"Saved visualization video to {file_dir}/visualization_ik.mp4"
             )
 
-        qpos_list = np.array(qpos_list)[start_idx:end_idx]
+        qpos_list = np.array(qpos_list)
 
         # average filter
         def moving_average_filter(signal_data, window_size=5):

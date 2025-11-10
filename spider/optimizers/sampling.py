@@ -385,8 +385,11 @@ def make_optimize_fn(
             improvement_history.append(info["improvement"])
 
             # early stopping: check if last n steps all have improvement below threshold
-            if (len(improvement_history) >= config.improvement_check_steps) and (
-                not terminate.all()
+            terminate_all = terminate.all()
+            terminate_early_stopping = terminate_all and config.terminate_resample
+            if (
+                len(improvement_history) >= config.improvement_check_steps
+                and not terminate_early_stopping
             ):
                 recent_improvements = improvement_history[
                     -config.improvement_check_steps :

@@ -117,7 +117,9 @@ def main(
         with open(task_info_path) as f:
             task_info = json.load(f)
         right_convex_dir = task_info.get("right_object_convex_dir")
+        right_convex_dir = f"{dataset_dir}/{right_convex_dir}"
         left_convex_dir = task_info.get("left_object_convex_dir")
+        left_convex_dir = f"{dataset_dir}/{left_convex_dir}"
 
         if (
             embodiment_type in ["right", "bimanual"]

@@ -55,24 +55,25 @@ TASK=coke
 HAND_TYPE=right
 DATA_ID=0
 ROBOT_TYPE=allegro
+DATASET_NAME=fair_mon
 
 # read data
 uv run spider/process_datasets/fair_mon.py --task=${TASK} --right-object-name=${RIGHT_OBJECT_NAME} --embodiment-type=${HAND_TYPE} --data-id=${DATA_ID}
 
 # decompose object
-uv run spider/preprocess/decompose.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --embodiment-type=${HAND_TYPE}
+uv run spider/preprocess/decompose_fast.py --task=${TASK} --dataset-name=${DATASET_NAME} --data-id=${DATA_ID} --embodiment-type=${HAND_TYPE}
 
 # detect contact (optional)
-uv run spider/preprocess/detect_contact.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --embodiment-type=${HAND_TYPE}
+uv run spider/preprocess/detect_contact.py --task=${TASK} --dataset-name=${DATASET_NAME} --data-id=${DATA_ID} --embodiment-type=${HAND_TYPE}
 
 # generate scene
-uv run spider/preprocess/generate_xml.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --embodiment-type=${HAND_TYPE} --robot-type=${ROBOT_TYPE}
+uv run spider/preprocess/generate_xml.py --task=${TASK} --dataset-name=${DATASET_NAME} --data-id=${DATA_ID} --embodiment-type=${HAND_TYPE} --robot-type=${ROBOT_TYPE}
 
 # kinematic retargeting
-uv run spider/preprocess/ik.py --task=${TASK} --dataset-name=fair_mon --data-id=${DATA_ID} --embodiment-type=${HAND_TYPE} --robot-type=${ROBOT_TYPE} --open-hand
+uv run spider/preprocess/ik.py --task=${TASK} --dataset-name=${DATASET_NAME} --data-id=${DATA_ID} --embodiment-type=${HAND_TYPE} --robot-type=${ROBOT_TYPE} --open-hand
 
 # retargeting
-uv run examples/run_mjwp.py +override=fair_mon
+uv run examples/run_mjwp.py +override=${DATASET_NAME} task=${TASK} data_id=${DATA_ID} robot_type=${ROBOT_TYPE} embodiment_type=${HAND_TYPE}
 ```
 
 ## Remote Development
@@ -81,3 +82,7 @@ uv run examples/run_mjwp.py +override=fair_mon
 # start rerun server
 uv run rerun --serve-web --port 9876
 ```
+
+## Notes
+
+1. IK is important. try to rerun ik if the retargeting is not good.

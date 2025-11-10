@@ -48,6 +48,7 @@ def main(
             mesh_dir = task_info.get("right_object_mesh_dir")
         else:
             mesh_dir = task_info.get("left_object_mesh_dir")
+        mesh_dir = f"{dataset_dir}/{mesh_dir}"
         if mesh_dir is None:
             loguru.logger.warning(f"No mesh_dir for {hand} hand; skipping.")
             continue

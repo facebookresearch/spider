@@ -4,13 +4,17 @@ except ModuleNotFoundError:
     print("trimesh is required. Please install with `pip install trimesh`")
     raise SystemExit(1)
 
+
 import json
+import os
 from collections.abc import Iterable
 from pathlib import Path
 
 import numpy as np
 import tyro
 from loguru import logger
+
+import spider
 
 MeshPart = tuple[np.ndarray, np.ndarray]
 
@@ -85,7 +89,7 @@ def flatten_base(hulls: Iterable[MeshPart], thickness: float = 0.01) -> list[Mes
 
 
 def main(
-    dataset_dir: str = "../../example_datasets",
+    dataset_dir: str = f"{spider.ROOT}/../example_datasets",
     dataset_name: str = "oakink",
     robot_type: str = "allegro",
     embodiment_type: str = "bimanual",
@@ -129,6 +133,7 @@ def main(
             "right_object_mesh_dir" if hand == "right" else "left_object_mesh_dir"
         )
         mesh_dir = task_info.get(mesh_dir_key)
+        mesh_dir = f"{dataset_path}/{mesh_dir}"
         if not mesh_dir:
             logger.warning("No mesh_dir for {} hand; skipping.", hand)
             continue
@@ -164,7 +169,9 @@ def main(
         convex_key = (
             "right_object_convex_dir" if hand == "right" else "left_object_convex_dir"
         )
-        task_info[convex_key] = str(output_dir)
+        # get relative path to dataset_dir
+        relative_path = os.path.relpath(output_dir, dataset_path)
+        task_info[convex_key] = str(relative_path)
 
     with task_info_path.open("w", encoding="utf-8") as file:
         json.dump(task_info, file, indent=2)
