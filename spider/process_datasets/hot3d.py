@@ -1,255 +1,117 @@
-"""This script process hot3d dataset to our target format.
+"""Process HOT3D sequences and save hand/object trajectories.
 
-Process:
-1. Load object and hand pose data
-2. Convert original mano point to finger tip and wrist/root pose
-3. Extract position and pose data for hands and objects
+This script should be run insider the HOT3D dataset root folder, assume the following structure:
+  hot3d/
+    hot3d/
+        process_hot3d.py
+        dataset/
+            P0001_4bf4e21a/
+            mano_hand_pose_trajectory.jsonl
 
-Input: hot3d dataset folder
-Output: npz file containing:
-    qpos_wrist_left (3pos+4quat(wxyz)), qpos_finger_left, qpos_obj_left, qpos_wrist_right, qpos_finger_right, qpos_obj_right
+Usage:
+    python process_hot3d.py --sequence-name P0003_c701bd11
 
-Note:
-- By default, the script now uses root pose (centered at middle finger root) instead of wrist pose
-- This matches the reference implementation in the hot3d dataset
-- Use --use_root_pose=False to revert to wrist pose if needed
-
-Author: Chaoyi Pan
-Date: 2025-08-04
-Updated: 2025-01-27 (added wrist to root pose conversion)
+Author: Changhao Wang
+Date: 2025-11-09
 """
 
+from __future__ import annotations
+
+import json
 import os
-import pickle
-import shutil
-import sys
-from contextlib import contextmanager
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 import loguru
-import mujoco
-import mujoco.viewer
 import numpy as np
 import pymeshlab
 import torch
 import tyro
-from loop_rate_limiters import RateLimiter
+from projectaria_tools.core.sensor_data import TimeDomain, TimeQueryOptions
 from scipy.spatial.transform import Rotation
 
-# Add the imitation_learning_3d path to import HOT3D utilities
-sys.path.append("../../../imitation_learning_3d")
-from robo3d.common.hot3d.mano_layer import loadManoHandModel
-from robo3d.common.rotation_utils import from_homogeneous
+from dataset_api import Hot3dDataProvider  # type: ignore  # noqa: E402
+from data_loaders.loader_hand_poses import (  # type: ignore # noqa: E402
+    Handedness,
+    load_mano_shape_params,
+)
+from data_loaders.loader_object_library import load_object_library  # type: ignore # noqa: E402
+from data_loaders.mano_layer import MANOHandModel  # type: ignore # noqa: E402
+from data_loaders.pytorch3d_rotation.rotation_conversions import (  # type: ignore # noqa: E402
+    matrix_to_axis_angle,
+)
 
 
-def convert_numpy_to_torch(input_dict):
-    """Credit: hot3d dataset
-    Convert all numpy arrays in the input dictionary to PyTorch tensors with float32 data type.
-
-    Args:
-        input_dict (dict): The input dictionary containing numpy arrays.
-
-    Returns:
-        dict: A new dictionary with numpy arrays converted to PyTorch tensors.
-    """
-    output_dict = {}
-    for key, value in input_dict.items():
-        if isinstance(value, dict):
-            # Recursively convert nested dictionaries
-            output_dict[key] = convert_numpy_to_torch(value)
-        elif isinstance(value, np.ndarray):
-            # Convert numpy array to torch tensor
-            output_dict[key] = torch.from_numpy(value).float()
-        else:
-            # Keep the value as is if it's not a numpy array
-            output_dict[key] = value
-    return output_dict
+def _to_numpy(array) -> np.ndarray:
+    """Convert torch tensors to numpy arrays without gradients."""
+    if isinstance(array, torch.Tensor):
+        return array.detach().cpu().numpy()
+    return np.asarray(array)
 
 
-def load_data(
-    hot3d_dir: str, object_id: str, sequence_id: int = 4, trajectory_id: int = 0
-):
-    """Load data from hot3d dataset for a specific trajectory ID within a sequence.
-    Loads pregrasp folders first, then postgrasp folders for the specified trajectory.
-    """
-    # Use the specified sequence (default trajectories4)
-    base_path = Path(hot3d_dir) / f"trajectories{sequence_id}" / "data" / object_id
+def convert_glb_to_obj(glb_path: str, obj_path: str, assets_path: str) -> bool:
+    """Convert GLB meshes provided by HOT3D into OBJ files for downstream use."""
+    try:
+        full_glb_path = os.path.join(assets_path, glb_path)
+        if not os.path.exists(full_glb_path):
+            loguru.logger.error(f"GLB file not found: {full_glb_path}")
+            return False
 
-    if not base_path.exists():
-        loguru.logger.error(f"Object path not found: {base_path}")
-        return None
-
-    # Load data from specific trajectory folder
-    trajectory_path = base_path / f"trajectory_{trajectory_id}"
-
-    if not trajectory_path.exists():
-        loguru.logger.error(f"Trajectory path not found: {trajectory_path}")
-        return None
-
-    loguru.logger.info(f"Loading data from trajectory_{trajectory_id}")
-
-    all_pregrasp_files = []
-    all_postgrasp_files = []
-
-    # Process the specific trajectory folder
-    pregrasp_folder = trajectory_path / "pregrasp"
-    postgrasp_folder = trajectory_path / "postgrasp"
-
-    # Check if folders exist and have data
-    if pregrasp_folder.exists() and len(os.listdir(pregrasp_folder)) > 0:
-        pregrasp_files = [
-            pregrasp_folder / item for item in os.listdir(pregrasp_folder)
-        ]
-        pregrasp_files = sorted(pregrasp_files, key=lambda x: int(x.stem))
-        # Filter out empty folders - check if required files exist
-        valid_pregrasp_files = []
-        for folder in pregrasp_files:
-            required_files = ["object_data.pkl", "right.pkl", "left.pkl"]
-            if all((folder / file).exists() for file in required_files):
-                valid_pregrasp_files.append(folder)
-            else:
-                loguru.logger.warning(f"Skipping empty/incomplete folder: {folder}")
-        all_pregrasp_files.extend(valid_pregrasp_files)
-        loguru.logger.info(
-            f"Added {len(valid_pregrasp_files)} valid pregrasp files from {trajectory_path}"
+        ms = pymeshlab.MeshSet()
+        ms.load_new_mesh(full_glb_path, load_in_a_single_layer=True)
+        ms.set_texture_per_mesh(use_dummy_texture=True)
+        os.makedirs(os.path.dirname(obj_path), exist_ok=True)
+        ms.save_current_mesh(
+            obj_path,
+            save_face_color=False,
+            save_textures=False,
+            save_vertex_color=False,
         )
-
-    if postgrasp_folder.exists() and len(os.listdir(postgrasp_folder)) > 0:
-        postgrasp_files = [
-            postgrasp_folder / item for item in os.listdir(postgrasp_folder)
-        ]
-        postgrasp_files = sorted(postgrasp_files, key=lambda x: int(x.stem))
-        # Filter out empty folders - check if required files exist
-        valid_postgrasp_files = []
-        for folder in postgrasp_files:
-            required_files = ["object_data.pkl", "right.pkl", "left.pkl"]
-            if all((folder / file).exists() for file in required_files):
-                valid_postgrasp_files.append(folder)
-            else:
-                loguru.logger.warning(f"Skipping empty/incomplete folder: {folder}")
-        all_postgrasp_files.extend(valid_postgrasp_files)
-        loguru.logger.info(
-            f"Added {len(valid_postgrasp_files)} valid postgrasp files from {trajectory_path}"
-        )
-
-    # Concatenate pregrasp files first, then postgrasp files for this trajectory
-    files = all_pregrasp_files + all_postgrasp_files
-
-    if not files:
-        loguru.logger.error(
-            f"No data files found for object {object_id} in trajectory_{trajectory_id}"
-        )
-        return None
-
-    loguru.logger.info(
-        f"Total files to process from trajectory_{trajectory_id}: {len(all_pregrasp_files)} pregrasp + {len(all_postgrasp_files)} postgrasp = {len(files)}"
-    )
-
-    # load data
-    trajectory_data = []
-    hand_list = ["right", "left"]
-    for datapoint_folder in files:
-        _datapoint = {}
-        filename_list = ["object_data"] + hand_list
-        for filename in filename_list:
-            with open(Path(datapoint_folder / (filename + ".pkl")), "rb") as file:
-                # datapoint has keys: ['object_data', 'right', 'left']
-                _datapoint[filename] = convert_numpy_to_torch(pickle.load(file))
-        trajectory_data.append(_datapoint)
-
-    loguru.logger.info(f"Loaded {len(trajectory_data)} total frames")
-    return trajectory_data
-
-
-def wrist_to_root_pose(
-    wrist_pose_matrix, joint_angles, shape_params, hand_id, mano_model
-):
-    """Convert wrist pose to root pose (centered at root of middle finger).
-
-    Args:
-        wrist_pose_matrix: 4x4 transformation matrix for wrist pose
-        joint_angles: MANO joint angles (15,)
-        shape_params: MANO shape parameters (10,)
-        hand_id: "left" or "right"
-        mano_model: MANO hand model instance
-
-    Returns:
-        root_pose_matrix: 4x4 transformation matrix for root pose
-    """
-    # Extract translation and rotation from wrist pose matrix
-    trans, rot = from_homogeneous(wrist_pose_matrix)
-
-    # Use MANO model's wrist2root conversion
-    root_pose_matrix = mano_model.wrist2root(
-        trans, rot, joint_angles, shape_params, hand_id
-    )
-
-    return root_pose_matrix
+        loguru.logger.info(f"Converted {full_glb_path} to {obj_path}")
+        return True
+    except Exception as exc:  # pragma: no cover
+        loguru.logger.error(f"Failed to convert {glb_path} to OBJ: {exc}")
+        return False
 
 
 def extract_hand_data_from_hot3d(
-    hand_data, hand_id, mano_model, use_root_pose=False, T_global=np.eye(4)
+    hand_data,
+    hand_id: str,
+    mano_model: MANOHandModel,
+    use_root_pose: bool = False,
+    T_global=np.eye(4),
 ):
-    """Extract hand pose data from HOT3D format using MANO forward kinematics.
-    Returns root/wrist pose and fingertip poses.
+    """Extract MANO wrist/root poses and fingertip trajectories from HOT3D dicts."""
+    joint_angles = hand_data["joint_angles"].float()
+    shape_params = hand_data["mano_shape_params"].float()
+    wrist_pose_matrix = hand_data["wrist_pose"].float()
 
-    Args:
-        hand_data: HOT3D hand data containing wrist_pose, joint_angles, mano_shape_params
-        hand_id: "left" or "right"
-        mano_model: MANO hand model instance
-        use_root_pose: If True, convert wrist pose to root pose (centered at middle finger root)
+    if isinstance(T_global, np.ndarray):
+        T_global = torch.from_numpy(T_global).float()
+    pose_matrix = T_global @ wrist_pose_matrix
 
-    Returns:
-        hand_pose: 7-element pose (3 position + 4 quaternion) for wrist or root
-        finger_poses: (5, 7) array of fingertip poses
-    """
-    # Extract MANO parameters from HOT3D data
-    joint_angles = hand_data["joint_angles"]  # Shape: (15,) pose parameters
-    shape_params = hand_data["mano_shape_params"]  # Shape: (10,) shape parameters
-
-    # Get wrist pose from wrist_pose matrix (4x4)
-    wrist_pose_matrix = hand_data["wrist_pose"]  # Shape: (4, 4)
-
-    # Convert wrist to root pose if requested
-    if use_root_pose:
-        # Convert wrist pose to root pose (centered at root of middle finger)
-        pose_matrix = wrist_to_root_pose(
-            wrist_pose_matrix, joint_angles, shape_params, hand_id, mano_model
-        )
-        pose_name = "root"
-    else:
-        pose_matrix = wrist_pose_matrix
-        pose_name = "wrist"
-
-    pose_matrix = T_global @ pose_matrix
-
-    # Extract position and rotation from pose matrix
     pose_position = pose_matrix[:3, 3]
     pose_rotation_matrix = pose_matrix[:3, :3]
+    axis_angle = matrix_to_axis_angle(pose_rotation_matrix.unsqueeze(0)).squeeze(0)
+    global_xform = torch.cat([axis_angle, pose_position])
+    is_right = torch.tensor([hand_id == "right"], dtype=torch.bool)
 
-    # Use MANO forward kinematics with the original pose rotation matrix
-    mesh_vertices, hand_landmarks = mano_model.forward_kinematics(
-        pose_position,
-        pose_rotation_matrix.detach().clone(),
-        joint_angles,
+    _, hand_landmarks = mano_model.forward_kinematics(
         shape_params,
-        hand_id,
+        joint_angles,
+        global_xform,
+        is_right,
     )
 
-    # Apply joint mapping to get correct landmark order
-    # MANO fingertip indices after joint mapping (thumb, index, middle, ring, pinky)
-    FINGERTIP_INDICES = [4, 8, 12, 16, 20]  # These are the final indices after mapping
-    fingertip_positions = hand_landmarks[FINGERTIP_INDICES]  # Shape: (5, 3)
+    fingertip_indices = [4, 8, 12, 16, 20]
+    hand_landmarks_np = _to_numpy(hand_landmarks)
+    fingertip_positions = hand_landmarks_np[fingertip_indices]
+    wrist_position = hand_landmarks_np[0]
+    root_position = hand_landmarks_np[9]
 
-    # Calculate hand orientation from landmarks (example: using middle finger direction)
-    # Get wrist position (joint index 0) and middle finger tip (joint index 12)
-    wrist_pos = hand_landmarks[0]  # Wrist joint
-    middle_finger_tip = hand_landmarks[12]  # Middle finger tip
-
-    # Convert rotation matrix to quaternion for pose
-    z_axis = hand_landmarks[9] - hand_landmarks[0]
+    z_axis = hand_landmarks_np[9] - hand_landmarks_np[0]
     z_axis = z_axis / np.linalg.norm(z_axis)
-    y_axis_aux = hand_landmarks[5] - hand_landmarks[13]
+    y_axis_aux = hand_landmarks_np[5] - hand_landmarks_np[13]
     y_axis_aux = y_axis_aux / np.linalg.norm(y_axis_aux)
     x_axis = np.cross(y_axis_aux, z_axis)
     x_axis = x_axis / np.linalg.norm(x_axis)
@@ -258,150 +120,330 @@ def extract_hand_data_from_hot3d(
     if hand_id == "left":
         x_axis = -x_axis
         y_axis = -y_axis
-    pose_rotation_matrix = np.stack([x_axis, y_axis, z_axis], axis=1)  # Column vectors
-    rotation = Rotation.from_matrix(pose_rotation_matrix)
-    quaternion = rotation.as_quat()  # [x, y, z, w]
-    quaternion = quaternion[[3, 0, 1, 2]]  # Convert to [w, x, y, z]
+    pose_rotation = Rotation.from_matrix(np.stack([x_axis, y_axis, z_axis], axis=1))
+    quaternion = pose_rotation.as_quat()
+    quaternion = quaternion[[3, 0, 1, 2]]
 
-    # Combine position and quaternion for hand pose
-    hand_pose = np.concatenate([pose_position.numpy(), quaternion])  # (7,)
-
-    # For fingertips, assume identity orientation (only position matters for now)
-    finger_poses = np.zeros((5, 7))  # 5 fingertips, 7-element pose each
-    finger_poses[:, :3] = fingertip_positions.numpy()  # Position
-    finger_poses[:, 3:] = [1, 0, 0, 0]  # Identity quaternion [w, x, y, z]
-
+    pose_translation = root_position if use_root_pose else wrist_position
+    hand_pose = np.concatenate([pose_translation, quaternion])
+    finger_poses = np.zeros((5, 7), dtype=np.float32)
+    finger_poses[:, :3] = fingertip_positions
+    finger_poses[:, 3:] = [1, 0, 0, 0]
     return hand_pose, finger_poses
 
 
 def extract_object_data_from_hot3d(object_data):
-    """Extract object pose from HOT3D object data."""
-    # Get object transformation matrix
-    T_object = object_data["T_object"]  # Shape: (4, 4)
-
-    # Extract position and rotation
-    position = T_object[:3, 3].numpy()
-    rotation_matrix = T_object[:3, :3].numpy()
-
-    # Convert rotation matrix to quaternion
-    rotation = Rotation.from_matrix(rotation_matrix)
-    quaternion = rotation.as_quat()  # [x, y, z, w]
-    quaternion = quaternion[[3, 0, 1, 2]]  # Convert to [w, x, y, z]
-
-    # Combine position and quaternion
-    object_pose = np.concatenate([position, quaternion])  # (7,)
-
-    return object_pose
+    """Convert HOT3D homogeneous object transforms into (pos, quat)."""
+    T_object = object_data["T_object"]
+    position = _to_numpy(T_object[:3, 3])
+    rotation_matrix = _to_numpy(T_object[:3, :3])
+    quaternion = Rotation.from_matrix(rotation_matrix).as_quat()
+    quaternion = quaternion[[3, 0, 1, 2]]
+    return np.concatenate([position, quaternion])
 
 
-def convert_glb_to_obj(glb_path: str, obj_path: str, assets_path: str) -> bool:
-    """Convert GLB file to OBJ format using pymeshlab.
+def _hand_pose_to_dict(
+    hand_pose_data, mano_shape_params: torch.Tensor
+) -> Dict[str, torch.Tensor]:
+    """Convert Hot3D HandPose to the dict format used downstream."""
+    if (
+        hand_pose_data is None
+        or hand_pose_data.wrist_pose is None
+        or hand_pose_data.joint_angles is None
+    ):
+        return {}
 
-    Args:
-        glb_path: Path to the GLB file (relative to assets_path)
-        obj_path: Output path for the OBJ file
-        assets_path: Base path for HOT3D assets
+    wrist_pose = torch.from_numpy(hand_pose_data.wrist_pose.to_matrix()).float()
+    joint_angles = torch.tensor(hand_pose_data.joint_angles, dtype=torch.float32)
+    return {
+        "wrist_pose": wrist_pose,
+        "joint_angles": joint_angles,
+        "mano_shape_params": mano_shape_params.clone(),
+    }
 
-    Returns:
-        bool: True if conversion successful, False otherwise
-    """
-    try:
-        # Construct full path to GLB file
-        full_glb_path = os.path.join(assets_path, glb_path)
 
-        if not os.path.exists(full_glb_path):
-            loguru.logger.error(f"GLB file not found: {full_glb_path}")
-            return False
-
-        # Create MeshSet and load GLB file
-        ms = pymeshlab.MeshSet()
-        ms.load_new_mesh(full_glb_path, load_in_a_single_layer=True)
-        ms.set_texture_per_mesh(use_dummy_texture=True)
-
-        # Ensure output directory exists
-        os.makedirs(os.path.dirname(obj_path), exist_ok=True)
-
-        # Save as OBJ file
-        ms.save_current_mesh(
-            obj_path,
-            save_face_color=False,
-            save_textures=False,
-            save_vertex_color=False,
+def build_trajectory_from_hot3d_provider(
+    hot3d_provider: Hot3dDataProvider,
+    object_uid: str,
+    embodiment_type: str,
+    mano_shape_params: torch.Tensor,
+) -> List[Dict]:
+    """Leverage the official HOT3D data provider to align hand/object poses."""
+    object_provider = hot3d_provider.object_pose_data_provider
+    hand_provider = hot3d_provider.mano_hand_data_provider
+    if hand_provider is None:
+        raise RuntimeError(
+            "MANO hand data provider unavailable — ensure MANO model files are installed."
         )
 
-        loguru.logger.info(f"Successfully converted {full_glb_path} to {obj_path}")
-        return True
+    object_timestamps = set(object_provider.timestamp_ns_list)
+    hand_timestamps = set(hand_provider.timestamp_ns_list)
+    candidate_timestamps = sorted(object_timestamps & hand_timestamps)
+    if not candidate_timestamps:
+        candidate_timestamps = object_provider.timestamp_ns_list
 
-    except Exception as e:
-        loguru.logger.error(f"Failed to convert {glb_path} to OBJ: {str(e)}")
-        return False
+    frames: List[Dict] = []
+    object_uid_str = str(object_uid)
+    for timestamp in candidate_timestamps:
+        object_with_dt = object_provider.get_pose_at_timestamp(
+            timestamp_ns=timestamp,
+            time_query_options=TimeQueryOptions.CLOSEST,
+            time_domain=TimeDomain.TIME_CODE,
+        )
+        if object_with_dt is None:
+            continue
+
+        object_pose = object_with_dt.pose3d_collection.poses.get(object_uid_str)
+        if object_pose is None or object_pose.T_world_object is None:
+            continue
+
+        hand_with_dt = hand_provider.get_pose_at_timestamp(
+            timestamp_ns=timestamp,
+            time_query_options=TimeQueryOptions.CLOSEST,
+            time_domain=TimeDomain.TIME_CODE,
+        )
+        if hand_with_dt is None:
+            continue
+
+        hands = {"left": {}, "right": {}}
+        for handedness, pose in hand_with_dt.pose3d_collection.poses.items():
+            hand_dict = _hand_pose_to_dict(pose, mano_shape_params)
+            if not hand_dict:
+                continue
+            if handedness == Handedness.Left:
+                hands["left"] = hand_dict
+            elif handedness == Handedness.Right:
+                hands["right"] = hand_dict
+
+        has_left = bool(hands["left"])
+        has_right = bool(hands["right"])
+        if embodiment_type == "left" and not has_left:
+            continue
+        if embodiment_type == "right" and not has_right:
+            continue
+        if embodiment_type == "bimanual" and not (has_left and has_right):
+            continue
+
+        T_world_object = torch.from_numpy(
+            object_pose.T_world_object.to_matrix()
+        ).float()
+
+        frames.append(
+            {
+                "timestamp_ns": timestamp,
+                "object_data": {"T_object": T_world_object},
+                "left": hands["left"],
+                "right": hands["right"],
+            }
+        )
+
+    if not frames:
+        raise ValueError(
+            "No aligned frames found via the HOT3D data provider — check object UID and embodiment filters."
+        )
+    return frames
 
 
-# def apply_transform_to_qpos(qpos, T_apply):
-#     """
-#     Apply transformation to qpos.
-#     """
-#     pos = qpos[:3]
-#     wxyz = qpos[3:]
-#     xyzw = wxyz[[3, 0, 1, 2]]
-#     T_in = np.eye(4)
-#     T_in[:3, 3] = pos
-#     T_in[:3, :3] = Rotation.from_quat(xyzw).as_matrix()
-#     T_out = T_apply @ T_in
-#     pos_out = T_out[:3, 3]
-#     mat_out = T_out[:3, :3]
-#     xyzw_out = Rotation.from_matrix(mat_out).as_quat()
-#     wxyz_out = xyzw_out[[3, 0, 1, 2]]
-#     qpos_out = np.concatenate([pos_out, wxyz_out])
-#     return qpos_out
+def compute_ref_dt(timestamps: List[int]) -> float:
+    if len(timestamps) < 2:
+        return 1.0 / 120.0
+    timestamps = np.array(timestamps, dtype=np.int64)
+    diffs = np.diff(timestamps) * 1e-9
+    return float(np.median(diffs))
 
 
-def main(
-    hot3d_dir: str = "/checkpoint/gum/francoishogan/hot3d/processed",
-    object_id: str = "106434519822892",
-    sequence_id: int = 4,
-    trajectory_id: int = 2,
-    hand_type: str = "bimanual",
-    mano_model_path: str = "/checkpoint/gum/francoishogan/hot3d/mano_v1_2/models",
-    assets_path: str = "../../datasets/hot3d_assets",
-    show_viewer: bool = True,
-    save_video: bool = False,
-    use_root_pose: bool = True,
+def prepare_task_info(
+    dataset_dir: str,
+    dataset_name: str,
+    embodiment_type: str,
+    task: str,
+    data_id: int,
+    object_uid: str,
+    sequence_name: str,
+    ref_dt: float,
+    object_mesh_dir: str | None,
+) -> Dict:
+    return {
+        "task": task,
+        "dataset_name": dataset_name,
+        "robot_type": "mano",
+        "embodiment_type": embodiment_type,
+        "data_id": data_id,
+        "right_object_mesh_dir": object_mesh_dir,
+        "left_object_mesh_dir": None,
+        "object_uid": object_uid,
+        "sequence_name": sequence_name,
+        "ref_dt": ref_dt,
+        "dataset_dir": dataset_dir,
+    }
+
+
+def get_processed_data_dir(
+    dataset_dir: str,
+    dataset_name: str,
+    robot_type: str,
+    embodiment_type: str,
+    task: str,
+    data_id: int,
+) -> str:
+    return os.path.join(
+        dataset_dir,
+        "processed",
+        dataset_name,
+        robot_type,
+        embodiment_type,
+        task,
+        str(data_id),
+    )
+
+
+def get_mesh_dir(dataset_dir: str, dataset_name: str, object_name: str) -> str:
+    return os.path.join(
+        dataset_dir, "processed", dataset_name, "assets", "objects", object_name
+    )
+
+
+def list_sequence_names(
+    hot3d_dataset_root: Path, prefix: Optional[str] = "P00"
+) -> List[str]:
+    if not hot3d_dataset_root.exists():
+        return []
+    sequence_names = [
+        entry.name for entry in hot3d_dataset_root.iterdir() if entry.is_dir()
+    ]
+    if prefix:
+        sequence_names = [name for name in sequence_names if name.startswith(prefix)]
+    return sorted(sequence_names)
+
+
+def resolve_object_uids(
+    object_provider: Any, requested_object_uid: Optional[str], sequence_name: str
+) -> List[str]:
+    if requested_object_uid is not None:
+        requested_str = str(requested_object_uid)
+        if (
+            object_provider is not None
+            and requested_str not in object_provider.object_uids_with_poses
+        ):
+            raise ValueError(
+                f"Object UID {requested_str} not found in sequence {sequence_name}."
+            )
+        return [requested_str]
+    if object_provider is None:
+        raise RuntimeError(
+            f"Object pose data provider unavailable for sequence {sequence_name}."
+        )
+    object_uids = sorted(object_provider.object_uids_with_poses)
+    if not object_uids:
+        raise ValueError(f"No object poses found for sequence {sequence_name}.")
+    return object_uids
+
+
+def process_object_sequence(
+    *,
+    sequence_name: str,
+    object_uid: str,
+    dataset_dir: Path,
+    assets_dir: Path,
+    hot3d_provider: Hot3dDataProvider,
+    mano_model: MANOHandModel,
+    mano_shape_tensor: torch.Tensor,
+    data_id: int,
+    embodiment_type: str,
+    first_frame: int,
+    last_frame: Optional[int],
+    use_root_pose: bool,
+    normalize_object_frame: bool,
+    object_frame_offset_deg: Tuple[float, float, float],
 ):
-    """Process hot3d dataset to our target format.
+    loguru.logger.info(
+        f"[{sequence_name} | obj {object_uid}] Aligning timestamps via Hot3dDataProvider..."
+    )
+    trajectory_data = build_trajectory_from_hot3d_provider(
+        hot3d_provider, str(object_uid), embodiment_type, mano_shape_tensor
+    )
+    total_frames = len(trajectory_data)
+    if total_frames == 0:
+        raise ValueError(
+            f"No frames available after alignment for sequence {sequence_name}, object {object_uid}."
+        )
 
-    Args:
-        hot3d_dir: Path to HOT3D processed dataset
-        object_id: Object ID to process
-        sequence_id: Sequence ID to process (default: 4 for trajectories4)
-        trajectory_id: Specific trajectory ID to process (default: 0 for trajectory_0)
-        hand_type: Type of hand processing ("left", "right", "bimanual")
-        mano_model_path: Path to MANO model files (defaults to HOT3D's MANO path)
-        assets_path: Path to HOT3D assets containing GLB files
-        show_viewer: Whether to show MuJoCo viewer
-        save_video: Whether to save video output
-        use_root_pose: Whether to convert wrist pose to root pose (centered at middle finger root)
-    """
-    task = f"hot3d-seq{sequence_id}-obj{object_id}-traj{trajectory_id}"
+    first_idx = max(0, first_frame)
+    if first_idx >= total_frames:
+        raise ValueError(
+            f"first_frame={first_frame} is outside the available range (0-{total_frames-1})."
+        )
 
-    # Load trajectory data
-    trajectory_data = load_data(hot3d_dir, object_id, sequence_id, trajectory_id)
+    if last_frame is None:
+        last_idx = total_frames - 1
+    else:
+        if last_frame < first_idx:
+            raise ValueError(
+                f"last_frame ({last_frame}) must be >= first_frame ({first_idx})."
+            )
+        last_idx = min(last_frame, total_frames - 1)
 
-    if trajectory_data is None or len(trajectory_data) == 0:
-        loguru.logger.error("No trajectory data loaded")
-        return
+    if first_idx != 0 or last_idx != total_frames - 1:
+        loguru.logger.info(
+            f"[{sequence_name} | obj {object_uid}] Cropping frames from {total_frames} total to range [{first_idx}, {last_idx}]."
+        )
+    trajectory_data = trajectory_data[first_idx : last_idx + 1]
+
+    timestamps = [frame["timestamp_ns"] for frame in trajectory_data]
+    ref_dt = compute_ref_dt(timestamps)
+    loguru.logger.info(
+        f"[{sequence_name} | obj {object_uid}] Aligned {len(trajectory_data)} frames (ref_dt ≈ {ref_dt:.4f}s)."
+    )
+
+    dataset_dir_str = str(dataset_dir)
+    task = f"{sequence_name}-obj{object_uid}"
+    output_dir = get_processed_data_dir(
+        dataset_dir=dataset_dir_str,
+        dataset_name="hot3d",
+        robot_type="mano",
+        embodiment_type=embodiment_type,
+        task=task,
+        data_id=data_id,
+    )
+    os.makedirs(output_dir, exist_ok=True)
+
+    object_mesh_dir = get_mesh_dir(
+        dataset_dir=dataset_dir_str,
+        dataset_name="hot3d",
+        object_name=str(object_uid),
+    )
+    os.makedirs(object_mesh_dir, exist_ok=True)
+    glb_converted = convert_glb_to_obj(
+        glb_path=f"{object_uid}.glb",
+        obj_path=f"{object_mesh_dir}/visual.obj",
+        assets_path=str(assets_dir),
+    )
+    if not glb_converted:
+        loguru.logger.warning(
+            f"[{sequence_name} | obj {object_uid}] Failed to convert {object_uid}.glb; downstream visualization may need a fallback mesh."
+        )
+
+    task_info = prepare_task_info(
+        dataset_dir=dataset_dir_str,
+        dataset_name="hot3d",
+        embodiment_type=embodiment_type,
+        task=task,
+        data_id=data_id,
+        object_uid=object_uid,
+        sequence_name=sequence_name,
+        ref_dt=ref_dt,
+        object_mesh_dir=object_mesh_dir if glb_converted else None,
+    )
+
+    task_info_path = Path(output_dir).parent / "task_info.json"
+    os.makedirs(task_info_path.parent, exist_ok=True)
+    with open(task_info_path, "w", encoding="utf-8") as f:
+        json.dump(task_info, f, indent=2)
+    loguru.logger.info(
+        f"[{sequence_name} | obj {object_uid}] Saved task metadata to {task_info_path}"
+    )
 
     N = len(trajectory_data)
-    loguru.logger.info(f"Processing {N} frames")
-
-    # Load MANO hand model using HOT3D's MANO model path
-    print("Loading MANO models...")
-    mano_model = loadManoHandModel(mano_model_files_dir=mano_model_path)
-    if mano_model is None:
-        loguru.logger.error(f"Failed to load MANO hand model from {mano_model_path}")
-        return
-
-    # Initialize output arrays
     qpos_wrist_right = np.zeros((N, 7))
     qpos_finger_right = np.zeros((N, 5, 7))
     qpos_obj_right = np.zeros((N, 7))
@@ -409,282 +451,153 @@ def main(
     qpos_finger_left = np.zeros((N, 5, 7))
     qpos_obj_left = np.zeros((N, 7))
 
-    # Get object initial transformation
-    T_object_init = trajectory_data[0]["object_data"]["T_object"]  # .cpu().numpy()
-    R_object_init = Rotation.from_matrix(T_object_init[:3, :3])
-    R_object_offset = Rotation.from_euler("xyz", [-np.pi / 2, 0, 0])
-    R_object = R_object_init * R_object_offset
-    T_object = np.eye(4)
-    T_object[:3, :3] = R_object.as_matrix()
-    T_object[:3, 3] = T_object_init[:3, 3]
-    T_global = np.linalg.inv(T_object)
-    T_global = torch.from_numpy(T_global).float()
+    first_object_tensor = trajectory_data[0]["object_data"]["T_object"]
+    T_global_np = np.eye(4, dtype=np.float32)
+    if normalize_object_frame:
+        T_object_init = first_object_tensor.detach().clone().numpy()
+        R_object_init = Rotation.from_matrix(T_object_init[:3, :3])
+        R_offset = Rotation.from_euler("xyz", object_frame_offset_deg, degrees=True)
+        R_object = R_object_init * R_offset
+        T_object = np.eye(4)
+        T_object[:3, :3] = R_object.as_matrix()
+        T_object[:3, 3] = T_object_init[:3, 3]
+        T_global_np = np.linalg.inv(T_object)
+    T_global = torch.from_numpy(T_global_np).float()
 
-    # Process each frame
-    print("Processing frames...")
+    loguru.logger.info(
+        f"[{sequence_name} | obj {object_uid}] Extracting qpos for hands and objects..."
+    )
     for i, frame_data in enumerate(trajectory_data):
         object_data = frame_data["object_data"]
-        left_hand_data = frame_data["left"]
-        right_hand_data = frame_data["right"]
-
-        # Get the transformation matrix for normalizing to base frame
-        # T_object = object_data["T_object"]
-        # T_inv = torch.inverse(T_object)
-
-        # # Transform point cloud to base frame
-        # ones = torch.ones((object_data['pc'].shape[0], 1), device=object_data['pc'].device, dtype=object_data['pc'].dtype)
-        # points = torch.cat((object_data["pc"], ones), dim=1)
-        # pc_base = (points @ T_inv.T)[:, :3]
-
-        # # Create transformed object data with normalized object position (identity transform)
-        # object_data_base = object_data.copy()
-        # object_data_base["pc"] = pc_base
-        # object_data_base["T_object"] = torch.eye(4, device=object_data["T_object"].device, dtype=object_data["T_object"].dtype)
-
-        # Extract object pose (should be identity/origin now)
         object_data["T_object"] = T_global @ object_data["T_object"]
         object_pose = extract_object_data_from_hot3d(object_data)
 
-        # Process left hand if data is available
-        if (
-            "wrist_pose" in left_hand_data
-            and "joint_angles" in left_hand_data
-            and "mano_shape_params" in left_hand_data
-        ):
-            # Transform wrist pose to base frame
-            # wrist_pose_left_base = T_inv @ left_hand_data["wrist_pose"]
-            wrist_pose_left_base = left_hand_data["wrist_pose"]
+        left_hand_data = frame_data["left"]
+        right_hand_data = frame_data["right"]
 
-            # Create transformed hand data
-            left_hand_data_base = left_hand_data.copy()
-            left_hand_data_base["wrist_pose"] = wrist_pose_left_base
-
-            # Extract hand poses using MANO forward kinematics
+        if left_hand_data:
             hand_pose_left, finger_poses_left = extract_hand_data_from_hot3d(
-                left_hand_data_base, "left", mano_model, use_root_pose, T_global
+                left_hand_data, "left", mano_model, use_root_pose, T_global
             )
             qpos_wrist_left[i] = hand_pose_left
             qpos_finger_left[i] = finger_poses_left
 
-        # Process right hand if data is available
-        if (
-            "wrist_pose" in right_hand_data
-            and "joint_angles" in right_hand_data
-            and "mano_shape_params" in right_hand_data
-        ):
-            # Transform wrist pose to base frame
-            # wrist_pose_right_base = T_inv @ right_hand_data["wrist_pose"]
-            wrist_pose_right_base = right_hand_data["wrist_pose"]
-
-            # Create transformed hand data
-            right_hand_data_base = right_hand_data.copy()
-            right_hand_data_base["wrist_pose"] = wrist_pose_right_base
-
-            # Extract hand poses using MANO forward kinematics
+        if right_hand_data:
             hand_pose_right, finger_poses_right = extract_hand_data_from_hot3d(
-                right_hand_data_base, "right", mano_model, use_root_pose, T_global
+                right_hand_data, "right", mano_model, use_root_pose, T_global
             )
             qpos_wrist_right[i] = hand_pose_right
             qpos_finger_right[i] = finger_poses_right
 
-        # Store object pose for both hands (same object, normalized to origin)
         qpos_obj_right[i] = object_pose
         qpos_obj_left[i] = np.array([0, 0, 0, 1, 0, 0, 0])
 
-    # apply global transform to qpos
-    # for i in range(N):
-    #     qpos_wrist_right[i] = apply_transform_to_qpos(qpos_wrist_right[i], T_global)
-    #     for j in range(5):
-    #         qpos_finger_right[i, j] = apply_transform_to_qpos(qpos_finger_right[i, j], T_global)
-    #     qpos_obj_right[i] = apply_transform_to_qpos(qpos_obj_right[i], T_global)
-    #     qpos_wrist_left[i] = apply_transform_to_qpos(qpos_wrist_left[i], T_global)
-    #     for j in range(5):
-    #         qpos_finger_left[i, j] = apply_transform_to_qpos(qpos_finger_left[i, j], T_global)
-    # qpos_obj_left is already at origin, so no need to transform
-
-    # Create object mesh files using GLB to OBJ conversion
-    if len(trajectory_data) > 0:
-        # Construct GLB file path based on object_id
-        glb_filename = f"{object_id}.glb"
-
-        # Create mesh directories and convert GLB to OBJ
-        for side in ["right"]:
-            file_name = f"{side}_{task}"
-            export_dir = f"../assets/objects/{file_name}"
-            if not os.path.exists(export_dir):
-                os.makedirs(export_dir)
-
-            # Convert GLB to OBJ using pymeshlab
-            obj_path = f"{export_dir}/{file_name}.obj"
-            success = convert_glb_to_obj(glb_filename, obj_path, assets_path)
-            loguru.logger.info(f"Successfully converted GLB to OBJ for {file_name}")
-
-            if not success:
-                loguru.logger.warning(
-                    f"Failed to convert GLB to OBJ for {file_name}, mesh file may be missing"
-                )
-
-        for side in ["left"]:
-            # create a dummy left object
-            file_name = f"{side}_{task}"
-            export_dir = f"../assets/objects/{file_name}"
-            # delete the export_dir if it exists
-            if os.path.exists(export_dir):
-                shutil.rmtree(export_dir)
-            # create empty left folder
-            os.makedirs(export_dir)
-            loguru.logger.info(f"Created empty left object folder: {export_dir}")
-
-    # Visualize the data
-    qpos_list = np.concatenate(
-        [
-            qpos_wrist_right[:, None],
-            qpos_finger_right,
-            qpos_wrist_left[:, None],
-            qpos_finger_left,
-            qpos_obj_right[:, None],
-            qpos_obj_left[:, None],
-        ],
-        axis=1,
+    output_npz = f"{output_dir}/trajectory_keypoints.npz"
+    np.savez(
+        output_npz,
+        qpos_wrist_right=qpos_wrist_right,
+        qpos_finger_right=qpos_finger_right,
+        qpos_obj_right=qpos_obj_right,
+        qpos_wrist_left=qpos_wrist_left,
+        qpos_finger_left=qpos_finger_left,
+        qpos_obj_left=qpos_obj_left,
+        timestamps=np.array(timestamps, dtype=np.int64),
+    )
+    loguru.logger.info(
+        f"[{sequence_name} | obj {object_uid}] Saved trajectory data to {output_npz}"
     )
 
-    # Set up MuJoCo visualization similar to gigahand.py
-    mj_spec = mujoco.MjSpec.from_file("../assets/mano/empty_scene.xml")
 
-    # Add right object
-    object_right_handle = mj_spec.worldbody.add_body(
-        name="right_object",
-        mocap=True,
-    )
-    object_right_handle.add_site(
-        name="right_object",
-        type=mujoco.mjtGeom.mjGEOM_BOX,
-        size=[0.01, 0.02, 0.03],
-        rgba=[1, 0, 0, 1],
-        group=0,
-    )
+def main(
+    dataset_dir: str = "../example_datasets",
+    hot3d_dataset_root: str = "./dataset",
+    sequence_name: str = "P0001_4bf4e21a",
+    object_uid: Optional[str] = None,
+    embodiment_type: str = "bimanual",
+    data_id: int = 0,
+    first_frame: int = 0,
+    last_frame: Optional[int] = None,
+    mano_model_path: str = "./dataset/mano",
+    assets_dir: str = "./dataset/assets",
+    use_root_pose: bool = True,
+    normalize_object_frame: bool = False,
+    object_frame_offset_deg: Tuple[float, float, float] = (0.0, 0.0, 0.0),
+    process_all_sequences: bool = False,
+):
+    dataset_dir = Path(dataset_dir).expanduser()
+    hot3d_dataset_root = Path(hot3d_dataset_root).expanduser()
+    assets_dir = Path(assets_dir).expanduser()
+    mano_model_path = Path(mano_model_path).expanduser()
 
-    if hand_type in ["right", "bimanual"]:
-        mj_spec.add_mesh(
-            name="right_object",
-            file=f"../objects/right_{task}/right_{task}.obj",
-        )
-        object_right_handle.add_geom(
-            name="right_object",
-            type=mujoco.mjtGeom.mjGEOM_MESH,
-            meshname="right_object",
-            pos=[0, 0, 0],
-            quat=[1, 0, 0, 0],
-            group=0,
-            condim=1,
-        )
+    if not assets_dir.exists():
+        raise FileNotFoundError(f"Object library folder {assets_dir} not found.")
+    if not mano_model_path.exists():
+        raise FileNotFoundError(f"MANO model folder {mano_model_path} not found.")
 
-    # Add left object
-    object_left_handle = mj_spec.worldbody.add_body(
-        name="left_object",
-        mocap=True,
-    )
-    object_left_handle.add_site(
-        name="left_object",
-        type=mujoco.mjtGeom.mjGEOM_BOX,
-        size=[0.01, 0.02, 0.03],
-        rgba=[0, 1, 0, 1],
-        group=0,
-    )
-
-    if hand_type in ["left"]:
-        mj_spec.add_mesh(
-            name="left_object",
-            file=f"../objects/left_{task}/left_{task}.obj",
-        )
-        object_left_handle.add_geom(
-            name="left_object",
-            type=mujoco.mjtGeom.mjGEOM_MESH,
-            meshname="left_object",
-            pos=[0, 0, 0],
-            quat=[1, 0, 0, 0],
-            group=0,
-            condim=1,
-        )
-
-    mj_model = mj_spec.compile()
-    mj_data = mujoco.MjData(mj_model)
-    rate_limiter = RateLimiter(120.0)
-
-    if show_viewer:
-        run_viewer = lambda: mujoco.viewer.launch_passive(mj_model, mj_data)
-    else:
-        cam = mujoco.MjvCamera()
-        cam.type = 2
-        cam.fixedcamid = 0
-
-        @contextmanager
-        def run_viewer():
-            yield type(
-                "DummyViewer",
-                (),
-                {
-                    "is_running": lambda: True,
-                    "sync": lambda: None,
-                    "cam": cam,
-                },
+    if process_all_sequences:
+        sequence_names = list_sequence_names(hot3d_dataset_root, prefix=None)
+        if not sequence_names:
+            raise ValueError(
+                f"No sequences found under {hot3d_dataset_root}."
             )
+    else:
+        sequence_names = [sequence_name]
 
-    if save_video:
-        import imageio
+    object_library = load_object_library(object_library_folderpath=str(assets_dir))
 
-        mj_model.vis.global_.offwidth = 720
-        mj_model.vis.global_.offheight = 480
-        renderer = mujoco.Renderer(mj_model, height=480, width=720)
-        images = []
+    for seq_name in sequence_names:
+        sequence_dir = hot3d_dataset_root / seq_name
+        if not sequence_dir.exists():
+            loguru.logger.warning(f"Sequence folder {sequence_dir} not found; skipping.")
+            continue
 
-    with run_viewer() as gui:
-        cnt = 0
-        while gui.is_running():
-            mj_data.mocap_pos[:] = qpos_list[cnt, :, :3]
-            mj_data.mocap_quat[:] = qpos_list[cnt, :, 3:]
-            mujoco.mj_step(mj_model, mj_data)
-            cnt = (cnt + 1) % N
+        loguru.logger.info(f"Processing sequence {seq_name}...")
+        mano_model = MANOHandModel(str(mano_model_path))
+        hot3d_provider = Hot3dDataProvider(
+            sequence_folder=str(sequence_dir),
+            object_library=object_library,
+            mano_hand_model=mano_model,
+        )
 
-            if save_video:
-                renderer.update_scene(mj_data, gui.cam)
-                img = renderer.render()
-                images.append(img)
+        mano_shape_params = load_mano_shape_params(
+            str(sequence_dir / "mano_hand_pose_trajectory.jsonl")
+        )
+        if mano_shape_params is None:
+            loguru.logger.warning(
+                f"[{seq_name}] MANO shape parameters missing; defaulting to zeros."
+            )
+            mano_shape_params = [0.0] * 10
+        mano_shape_tensor = torch.tensor(mano_shape_params, dtype=torch.float32)
 
-            if cnt == (N - 1):
-                save_dir = "../../datasets/raw/mano"
-                if not os.path.exists(save_dir):
-                    os.makedirs(save_dir)
+        object_provider = hot3d_provider.object_pose_data_provider
+        try:
+            object_uids = resolve_object_uids(object_provider, object_uid, seq_name)
+        except Exception as exc:
+            loguru.logger.warning(f"[{seq_name}] {exc}")
+            continue
 
-                # Save data to NPZ
-                np.savez(
-                    f"{save_dir}/{hand_type}_{task}.npz",
-                    qpos_wrist_right=qpos_wrist_right,
-                    qpos_finger_right=qpos_finger_right,
-                    qpos_obj_right=qpos_obj_right,
-                    qpos_wrist_left=qpos_wrist_left,
-                    qpos_finger_left=qpos_finger_left,
-                    qpos_obj_left=qpos_obj_left,
-                    contact=np.zeros((N, 10)),
+        for uid in object_uids:
+            try:
+                process_object_sequence(
+                    sequence_name=seq_name,
+                    object_uid=uid,
+                    dataset_dir=dataset_dir,
+                    assets_dir=assets_dir,
+                    hot3d_provider=hot3d_provider,
+                    mano_model=mano_model,
+                    mano_shape_tensor=mano_shape_tensor,
+                    data_id=data_id,
+                    embodiment_type=embodiment_type,
+                    first_frame=first_frame,
+                    last_frame=last_frame,
+                    use_root_pose=use_root_pose,
+                    normalize_object_frame=normalize_object_frame,
+                    object_frame_offset_deg=object_frame_offset_deg,
                 )
-                loguru.logger.info(f"Saved data to {hand_type}_{task}.npz")
-
-                if save_video:
-                    imageio.mimsave(
-                        f"{save_dir}/{hand_type}_{task}.mp4",
-                        images,
-                        fps=10,
-                    )
-                    loguru.logger.info(
-                        f"Saved video to {save_dir}/{hand_type}_{task}.mp4"
-                    )
-
-                if not show_viewer:
-                    break
-
-            if show_viewer:
-                gui.sync()
-                rate_limiter.sleep()
+            except Exception as exc:
+                loguru.logger.error(
+                    f"[{seq_name} | obj {uid}] Failed to process object: {exc}"
+                )
 
 
 if __name__ == "__main__":
