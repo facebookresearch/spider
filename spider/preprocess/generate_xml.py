@@ -20,9 +20,9 @@ def main(
     task: str = "pick_spoon_bowl",
     data_id: int = 0,
     hand_floor_collision: bool = False,
-    object_density: float = 3000,
-    object_armature: float = 0.001,
-    object_frictionloss: float = 0.01,
+    object_density: float = 1000,
+    object_armature: float = 0.0001,
+    object_frictionloss: float = 0.0001,
     show_viewer: bool = True,
 ):
     dataset_dir = os.path.abspath(dataset_dir)
