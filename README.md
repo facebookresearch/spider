@@ -1,14 +1,5 @@
 # SPIDER: Scalable Physics-Informed DExterous Retargeting
 
-## Quickstart (uv):
-
-Create env and install:
-
-```bash
-uv sync
-pip install --ignore-requires-python --no-deps -e .
-```
-
 Clone example datasets:
 
 ```bash
@@ -17,10 +8,39 @@ git lfs install
 git clone https://huggingface.co/datasets/retarget/retarget_example example_datasets
 ```
 
+## (Option 1) Quickstart with uv:
+
+Create env and install (make sure `uv` uses Python 3.12, which is what the project targets):
+
+```bash
+# one-time install of the interpreter if you don't already have it
+uv python install 3.12
+
+# sync the .venv with that interpreter
+uv sync --python 3.12
+pip install --ignore-requires-python --no-deps -e .
+```
+
 Run MJWP on a processed trial:
 
 ```bash
 uv run examples/run_mjwp.py
+```
+
+## (Option 2) Quickstart with conda:
+
+```bash
+conda create -n spider python=3.12
+conda activate spider
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pip install --no-deps -e .
+```
+
+Run MJWP on a processed trial:
+
+```bash
+python examples/run_mjwp.py
 ```
 
 ## Native Workflow
