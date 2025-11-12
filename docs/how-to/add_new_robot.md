@@ -1,5 +1,86 @@
 # Port new robot
 
+## Add dexterous hand
+
+* (optional) convert urdf to xml with mujoco. Adding the following snippet to the urdf file can help:
+
+```xml
+ <mujoco>
+    <compiler meshdir="assets" balanceinertia="true" discardvisual="false"/>
+  </mujoco>
+```
+* add default setting, here is an example:
+
+```xml
+<default>
+    <!-- disable all contacts and use explicit collision pairs -->
+    <geom density="800" condim="1" contype="0" conaffinity="0" />
+    <!-- with this setting, the response time is around 1s -->
+    <position kp="300" dampratio="1.0" inheritrange="1" />
+    <joint damping="0.0" armature="1.0" frictionloss="0.0" />
+    <site size="0.01" type="sphere" rgba="1 0 0 1" group="3" />
+</default>
+<asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512"
+        height="3072" />
+    <texture type="2d" name="left_groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4"
+        rgb2="0.1 0.2 0.3"
+        markrgb="0.8 0.8 0.8" width="300" height="300" />
+    <material name="left_groundplane" texture="left_groundplane" texuniform="true"
+        texrepeat="5 5"
+        reflectance="0.2" />
+</asset>
+
+
+<camera name="left_track" pos="0.868 -0.348 -0.175"
+    xyaxes="0.037 0.999 -0.000 0.011 -0.000 1.000" />
+```
+
+* remove all extra joint properties like `actuatorfrcrange`, `damping`, `frictionloss`, `armature`, etc.
+
+* Change the mesh name, make sure left hand body/geom/mesh name start with `left_` and right hand body/geom name start with `right_` to avoid naming conflict.
+
+* Change collision mesh name (used for future contact detection and collision pair creation), naming convension: `collision_hand_{side}_{finger}_{part}`, where `side` is `left` or `right`, `finger` is `thumb`, `index`, `middle`, `ring`, `pinky`, `palm` and `part` is `0`, `1`, `2`, `3` ... For each finger, part start from index and go all the way to base. Make sure collision mesh is in group `3`. For collision geometry, please consider use geom primitives like `box`, `sphere`, `cylinder`, `capsule` instead of `mesh`. It is recommended to set collision to `group="3"` and set color to `rgba="0 1 0 1"`.
+* Add trace site: add trace site to each finger tip, following naming convention `trace_hand_{side}_{finger}_tip`, where `side` is `left` or `right`, `finger` is `thumb`, `index`, `middle`, `ring`, `pinky`.
+* Add tracking site: add tracking site to each finger tip, following naming convention `track_hand_{side}_{finger}_tip`, where `side` is `left` or `right`, `finger` is `thumb`, `index`, `middle`, `ring`, `pinky`.
+* Create site `right_palm`, `right_thumb_tip`, `right_index_tip`, `right_middle_tip`, `right_ring_tip`, `right_pinky_tip` (same for left hand), make sure `palm` site has `z` axis pointing to the front and `x` axis pointing down, see [(figs/base_def.png)](figs/base_def.png)
+* Add actuator, for base, use larger kp, for other joints, use smaller kp. Since we are using joint position as initial control guess, please make sure the order of the actuator is the same as the order of the joint in the xml file. Example:
+
+```xml
+    <actuator>
+        <!-- Global position and rotation joints -->
+        <position name="left_pos_x_position" joint="left_pos_x" kp="1000" />
+        <position name="left_pos_y_position" joint="left_pos_y" kp="1000" />
+        <position name="left_pos_z_position" joint="left_pos_z" kp="1000" />
+        <position name="left_rot_x_position" joint="left_rot_x" kp="1000" />
+        <position name="left_rot_y_position" joint="left_rot_y" kp="1000" />
+        <position name="left_rot_z_position" joint="left_rot_z" kp="1000" />
+
+        <!-- Thumb joints -->
+        <position name="left_thumb_proximal_yaw_position" joint="left_thumb_proximal_yaw_joint" />
+        <position name="left_thumb_proximal_pitch_position" joint="left_thumb_proximal_pitch_joint" />
+        <position name="left_thumb_intermediate_position" joint="left_thumb_intermediate_joint" />
+        <position name="left_thumb_distal_position" joint="left_thumb_distal_joint" />
+
+        <!-- Index joints -->
+        <position name="left_index_proximal_position" joint="left_index_proximal_joint" />
+        <position name="left_index_intermediate_position" joint="left_index_intermediate_joint" />
+
+        <!-- Middle joints -->
+        <position name="left_middle_proximal_position" joint="left_middle_proximal_joint" />
+        <position name="left_middle_intermediate_position" joint="left_middle_intermediate_joint" />
+
+        <!-- Ring joints -->
+        <position name="left_ring_proximal_position" joint="left_ring_proximal_joint" />
+        <position name="left_ring_intermediate_position" joint="left_ring_intermediate_joint" />
+
+        <!-- Pinky joints -->
+        <position name="left_pinky_proximal_position" joint="left_pinky_proximal_joint" />
+        <position name="left_pinky_intermediate_position" joint="left_pinky_intermediate_joint" />
+
+    </actuator>
+`
+
 ## Add humanoid
 
 This guide explains how to optimize a humanoid robot MJCF file for performance in MuJoCo simulations.

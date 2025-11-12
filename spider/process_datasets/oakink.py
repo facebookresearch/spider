@@ -268,7 +268,7 @@ def main(
     )
 
     # visualize the data
-    mj_spec = mujoco.MjSpec.from_file(f"{retarget.ROOT}/assets/mano/empty_scene.xml")
+    mj_spec = mujoco.MjSpec.from_file(f"{spider.ROOT}/assets/mano/empty_scene.xml")
 
     # add right object to body "right_object"
     object_right_handle = mj_spec.worldbody.add_body(

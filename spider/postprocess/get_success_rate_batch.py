@@ -1,5 +1,4 @@
-"""
-Read get success rate for a batch of tasks by calling get_success_rate.py's main function, save all results in a csv file.
+"""Read get success rate for a batch of tasks by calling get_success_rate.py's main function, save all results in a csv file.
 
 Input:
 - dataset_dir: str, the directory of the dataset
@@ -14,11 +13,13 @@ Output:
 - success_rate_df: pd.DataFrame, the success rate of the tasks with tracking errors
 """
 
-import tyro
-import pandas as pd
 import os
 from itertools import product
-from retarget.postprocess.get_success_rate import main as get_success_rate_main
+
+import pandas as pd
+import tyro
+
+from spider.postprocess.get_success_rate import main as get_success_rate_main
 
 
 def main(
@@ -30,8 +31,7 @@ def main(
     pos_err_threshold: float = 0.1,
     quat_err_threshold: float = 0.5,
 ):
-    """
-    Run get_success_rate for multiple parameter combinations and combine results.
+    """Run get_success_rate for multiple parameter combinations and combine results.
 
     Args:
         dataset_dir: Directory containing the datasets
@@ -62,13 +62,13 @@ def main(
     for i, (dataset_name, robot_type, hand_type, data_type) in enumerate(
         param_combinations
     ):
-        print(f"\n{'='*80}")
-        print(f"Processing combination {i+1}/{len(param_combinations)}:")
+        print(f"\n{'=' * 80}")
+        print(f"Processing combination {i + 1}/{len(param_combinations)}:")
         print(f"  Dataset: {dataset_name}")
         print(f"  Robot Type: {robot_type}")
         print(f"  Hand Type: {hand_type}")
         print(f"  Data Type: {data_type}")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
 
         try:
             # Call the main function from get_success_rate.py
@@ -103,7 +103,7 @@ def main(
         return None
 
     # Combine all results
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("Combining results...")
 
     combined_complete_df = pd.concat(all_complete_dataframes, ignore_index=True)
@@ -120,14 +120,14 @@ def main(
     timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
 
     # Save combined summary data
-    summary_output_file = os.path.join(output_dir, f"summary.csv")
+    summary_output_file = os.path.join(output_dir, "summary.csv")
     combined_summary_df.to_csv(summary_output_file, index=False)
     print(f"Combined summary data saved to: {summary_output_file}")
 
     # Print overall statistics
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("BATCH PROCESSING SUMMARY")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     print(f"Total parameter combinations processed: {len(all_summary_dataframes)}")
     print(f"Total tasks analyzed: {len(combined_complete_df)}")
@@ -135,12 +135,12 @@ def main(
     # Overall success rate across all combinations
     overall_success_rate = combined_complete_df["success"].mean()
     print(
-        f"Overall success rate across all combinations: {overall_success_rate:.4f} ({overall_success_rate*100:.2f}%)"
+        f"Overall success rate across all combinations: {overall_success_rate:.4f} ({overall_success_rate * 100:.2f}%)"
     )
 
     # Success rate by dataset
     if len(dataset_name_list) > 1:
-        print(f"\nSuccess rate by dataset:")
+        print("\nSuccess rate by dataset:")
         dataset_stats = (
             combined_complete_df.groupby("dataset")["success"]
             .agg(["count", "mean"])
@@ -151,7 +151,7 @@ def main(
 
     # Success rate by robot type
     if len(robot_type_list) > 1:
-        print(f"\nSuccess rate by robot type:")
+        print("\nSuccess rate by robot type:")
         robot_stats = (
             combined_complete_df.groupby("robot_type")["success"]
             .agg(["count", "mean"])
@@ -162,7 +162,7 @@ def main(
 
     # Success rate by hand type
     if len(hand_type_list) > 1:
-        print(f"\nSuccess rate by hand type:")
+        print("\nSuccess rate by hand type:")
         hand_stats = (
             combined_complete_df.groupby("hand_type")["success"]
             .agg(["count", "mean"])
@@ -173,7 +173,7 @@ def main(
 
     # Success rate by data type
     if len(data_type_list) > 1:
-        print(f"\nSuccess rate by data type:")
+        print("\nSuccess rate by data type:")
         data_type_stats = (
             combined_complete_df.groupby("data_type")["success"]
             .agg(["count", "mean"])
@@ -188,13 +188,13 @@ def main(
     quat_err_mean = combined_complete_df["obj_quat_err"].mean()
     quat_err_std = combined_complete_df["obj_quat_err"].std()
 
-    print(f"\nOverall tracking errors across all combinations:")
+    print("\nOverall tracking errors across all combinations:")
     print(f"Position Error: {pos_err_mean:.3f} ± {pos_err_std:.3f}")
     print(f"Orientation Error: {quat_err_mean:.3f} ± {quat_err_std:.3f}")
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("Batch processing completed successfully!")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     return combined_complete_df, combined_summary_df
 

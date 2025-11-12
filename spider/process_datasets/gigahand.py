@@ -25,12 +25,13 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 import pymeshlab
-import retarget
 import tyro
 from loop_rate_limiters import RateLimiter
-from retarget.io import get_mesh_dir, get_processed_data_dir
 from scipy.interpolate import interp1d
 from scipy.spatial.transform import Rotation, Slerp
+
+import spider
+from spider.io import get_mesh_dir, get_processed_data_dir
 
 
 def select_nf(params_all, nf):
@@ -439,7 +440,7 @@ def main(
     print("Loading MANO models...")
     # TODO: integrate to our pipeline
     body_model_right, body_model_left = load_body_model(
-        model_path=f"{retarget.ROOT}/../../GigaHands/body_models"
+        model_path=f"{spider.ROOT}/../../GigaHands/body_models"
     )
 
     # Initialize output arrays
@@ -651,7 +652,7 @@ def main(
     )
 
     # visualize the data
-    mj_spec = mujoco.MjSpec.from_file(f"{retarget.ROOT}/assets/mano/empty_scene.xml")
+    mj_spec = mujoco.MjSpec.from_file(f"{spider.ROOT}/assets/mano/empty_scene.xml")
 
     # add right object to body "right_object"
     object_right_handle = mj_spec.worldbody.add_body(

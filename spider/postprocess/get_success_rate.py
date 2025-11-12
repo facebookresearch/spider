@@ -1,22 +1,20 @@
-"""
-Go through all info.csv and get the success rate of each task
+"""Go through all info.csv and get the success rate of each task
 
 Author: Chaoyi Pan
 Date: 2025-07-31
 """
 
 import os
-import glob
+
+import numpy as np
 import pandas as pd
 import tyro
-import numpy as np
 
-from retarget.io import get_processed_data_dir, get_all_tasks
+from spider.io import get_all_tasks, get_processed_data_dir
 
 
 def quat_to_vel(quat: np.ndarray) -> np.ndarray:
-    """
-    Convert quaternion to angular velocity
+    """Convert quaternion to angular velocity
     Args:
     quat: (..., 4) quaternion in (w, x, y, z) format
     Returns:
@@ -44,8 +42,7 @@ def quat_to_vel(quat: np.ndarray) -> np.ndarray:
 
 
 def mul_quat(u: np.ndarray, v: np.ndarray) -> np.ndarray:
-    """
-    Multiply two quaternions
+    """Multiply two quaternions
     Args:
     u: (..., 4) quaternion in (w, x, y, z) format
     v: (..., 4) quaternion in (w, x, y, z) format
@@ -81,8 +78,7 @@ def mul_quat(u: np.ndarray, v: np.ndarray) -> np.ndarray:
 
 
 def quat_sub(qa, qb):
-    """
-    Subtract quaternion qa from qb, in (w, x, y, z) format
+    """Subtract quaternion qa from qb, in (w, x, y, z) format
     Args:
         qa: (..., 4) quaternion array
         qb: (..., 4) quaternion array
@@ -363,7 +359,7 @@ def main(
     success_stats["std_quat_err"] = 0.0  # No std for individual entries
     success_stats["timestamp"] = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    print(f"\nSuccess Rate Summary:")
+    print("\nSuccess Rate Summary:")
     print("=" * 80)
     print(
         success_stats[
@@ -380,11 +376,11 @@ def main(
     # Overall success rate
     overall_success_rate = combined_df["success"].mean()
     print(
-        f"\nOverall Success Rate: {overall_success_rate:.4f} ({overall_success_rate*100:.2f}%)"
+        f"\nOverall Success Rate: {overall_success_rate:.4f} ({overall_success_rate * 100:.2f}%)"
     )
 
     # Overall tracking error
-    print(f"\nOverall Tracking Error:")
+    print("\nOverall Tracking Error:")
     # position error
     pos_err_mean = combined_df["obj_pos_err"].mean()
     pos_err_std = combined_df["obj_pos_err"].std()
@@ -396,7 +392,7 @@ def main(
     # Handle summary.csv - check if it exists and update accordingly
     summary_file = os.path.join(complete_output_dir, "summary.csv")
     if os.path.exists(summary_file):
-        print(f"\nFound existing summary.csv, checking for updates...")
+        print("\nFound existing summary.csv, checking for updates...")
         try:
             existing_summary = pd.read_csv(summary_file)
 
@@ -419,7 +415,7 @@ def main(
                 action = "updated"
             else:
                 print(
-                    f"No existing entries found with the same parameters - adding new entries"
+                    "No existing entries found with the same parameters - adding new entries"
                 )
                 action = "added"
 
@@ -443,7 +439,7 @@ def main(
             print("Creating new summary file...")
             success_stats.to_csv(summary_file, index=False)
     else:
-        print(f"\nCreating new summary.csv...")
+        print("\nCreating new summary.csv...")
         success_stats.to_csv(summary_file, index=False)
 
     print(f"Summary saved to: {summary_file}")

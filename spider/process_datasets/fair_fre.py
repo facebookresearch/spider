@@ -29,8 +29,9 @@ import pymeshlab
 import torch
 import tyro
 from loop_rate_limiters import RateLimiter
-from retarget.io import get_mesh_dir, get_processed_data_dir
 from scipy.spatial.transform import Rotation as R
+
+from spider.io import get_mesh_dir, get_processed_data_dir
 
 
 def main(

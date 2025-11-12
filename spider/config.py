@@ -61,7 +61,7 @@ class Config:
     # === OPTIMIZER CONFIGURATION ===
     # Sampling parameters
     num_samples: int = 1024
-    temperature: float = 1.0
+    temperature: float = 0.1
     max_num_iterations: int = 16
     improvement_threshold: float = 0.01
     improvement_check_steps: int = 1

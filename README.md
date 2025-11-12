@@ -1,11 +1,25 @@
-# SPIDER: Scalable Physics-Informed DExterous Retargeting
+<h1 align="center">🕸️ SPIDER: Scalable Physics-Informed DExterous Retargeting</h1>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
-[![arXiv](https://img.shields.io/badge/arXiv-2406.12345-b31b1b.svg)](https://arxiv.org/abs/xxxx)
-[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://jc-bao.github.io/spider/)
-[![Project Website](https://img.shields.io/badge/website-project-blue.svg)](https://jc-bao.github.io/spider-project/)
+<p align="center">
+  <a href="https://opensource.org/licenses/MIT">
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
+  </a>
+  <a href="https://www.python.org/downloads/">
+    <img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+">
+  </a>
+  <a href="https://pytorch.org/">
+    <img src="https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg" alt="PyTorch">
+  </a>
+  <a href="https://arxiv.org/abs/xxxx">
+    <img src="https://img.shields.io/badge/arXiv-2406.12345-b31b1b.svg" alt="arXiv">
+  </a>
+  <a href="https://jc-bao.github.io/spider/">
+    <img src="https://img.shields.io/badge/docs-latest-blue.svg" alt="Documentation">
+  </a>
+  <a href="https://jc-bao.github.io/spider-project/">
+    <img src="https://img.shields.io/badge/website-project-blue.svg" alt="Project Website">
+  </a>
+</p>
 
 ![logo](figs/teaser.png)
 
@@ -22,7 +36,7 @@ This code base provides the following pipeline from human video to robot actions
 
 ### Simulation results:
 
-| Inspire Pick Tea Pot (Gigahands) | Xhand Play Glass (Hot3D dataset) | Schunk Pick Board (Oakink dataset) | Allegro Pick Cat Toy (Reconstructed from single RGB video)
+| Inspire Pick Tea Pot (Gigahands Dataset) | Xhand Play Glass (Hot3D dataset) | Schunk Pick Board (Oakink dataset) | Allegro Pick Cat Toy (Reconstructed from single RGB video)
 | ------- | ------- | ------- | ------- |
 | ![](figs/sim/inspire_pick_pot.gif) | ![](figs/sim/xhand_glass.gif) | ![](figs/sim/schunk_move_board.gif) | ![](figs/sim/allegro_pick_cat.gif) |
 
@@ -121,16 +135,16 @@ SPIDER is designed to support multiple workflows depending on your simulator of 
 - supports dexterous hand and humanoid robot retargeting
 
 ```bash
-# put data in example_datasets/raw/fair_mon/{task}_{embodiment_type}/{data_id}.pkl
-# e.g. example_datasets/raw/fair_mon/cat_right/0.pkl
-TASK=coke
-HAND_TYPE=right
-DATA_ID=0
-ROBOT_TYPE=allegro
-DATASET_NAME=fair_mon
+TASK=p36-tea
+HAND_TYPE=bimanual
+DATA_ID=10
+ROBOT_TYPE=xhand
+DATASET_NAME=gigahand
 
-# read data
-uv run spider/process_datasets/fair_mon.py --task=${TASK} --right-object-name=${RIGHT_OBJECT_NAME} --embodiment-type=${HAND_TYPE} --data-id=${DATA_ID}
+# put your raw data under folder raw/{dataset_name/ in your dataset folder
+
+# read data from self collected dataset
+uv run spider/process_datasets/gigahand.py --task=${TASK} --embodiment-type=${HAND_TYPE} --data-id=${DATA_ID}
 
 # decompose object
 uv run spider/preprocess/decompose_fast.py --task=${TASK} --dataset-name=${DATASET_NAME} --data-id=${DATA_ID} --embodiment-type=${HAND_TYPE}
@@ -173,11 +187,10 @@ uv pip install --no-deps -e ../spider
 ```bash
 # start rerun server
 uv run rerun --serve-web --port 9876
+
+# run SPIDER only with rerun viewer
+uv run examples/run_mjwp.py viewer="rerun"
 ```
-
-## Notes
-
-1. IK is important. try to rerun ik if the retargeting is not good.
 
 ## Acknowledgments
 
@@ -185,7 +198,7 @@ uv run rerun --serve-web --port 9876
 - Thanks Taylor Howell for the help in the early stages of integrating [Mujoco Wrap](https://github.com/google-deepmind/mujoco_warp) for SPIDER + MJWP.
 - Thanks Haoyang Weng for the help with the [HDMI workflow](https://github.com/lecar-lab/hdmi) for SPIDER + Sim2real RL.
 - Inverse kinematics design is ported from [GMR](https://github.com/YanjieZe/GMR) and [LocoMujoco](https://github.com/robfiras/loco-mujoco).
-- Dataset processing is ported from [Hot3D](https://github.com/facebookresearch/hot3d), [Oakinkv2](https://github.com/oakink/OakInk2), [Maniptrans](https://github.com/ManipTrans/ManipTrans).
+- Dataset processing is ported from [Hot3D](https://github.com/facebookresearch/hot3d), [Oakinkv2](https://github.com/oakink/OakInk2), [Maniptrans](https://github.com/ManipTrans/ManipTrans), [Gigahands](https://github.com/Gigahands/Gigahands).
 - Visualization inspired by other good sampling repo like [Hydrax](https://github.com/vincekurtz/hydrax) and [Judo](https://github.com/bdaiinstitute/judo).
 
 
