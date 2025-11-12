@@ -204,3 +204,9 @@ outputs/
 submitit/
 example_datasets/
 tmp/
+
+# VitePress documentation
+docs/node_modules/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+docs/package-lock.json
