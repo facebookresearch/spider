@@ -209,4 +209,4 @@ tmp/
 docs/node_modules/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
-docs/package-lock.json
+# docs/package-lock.json  # Uncomment to ignore lock file
