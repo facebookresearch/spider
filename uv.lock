@@ -112,11 +112,11 @@ wheels = [
 
 [[package]]
 name = "certifi"
-version = "2025.10.5"
+version = "2025.11.12"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/4c/5b/b6ce21586237c77ce67d01dc5507039d444b630dd76611bbca2d8e5dcd91/certifi-2025.10.5.tar.gz", hash = "sha256:47c09d31ccf2acf0be3f701ea53595ee7e0b8fa08801c6624be771df09ae7b43", size = 164519, upload-time = "2025-10-05T04:12:15.808Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a2/8c/58f469717fa48465e4a50c014a0400602d3c437d7c0c468e17ada824da3a/certifi-2025.11.12.tar.gz", hash = "sha256:d8ab5478f2ecd78af242878415affce761ca6bc54a22a27e026d7c25357c3316", size = 160538, upload-time = "2025-11-12T02:54:51.517Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e4/37/af0d2ef3967ac0d6113837b44a4f0bfe1328c2b9763bd5b1744520e5cfed/certifi-2025.10.5-py3-none-any.whl", hash = "sha256:0f212c2744a9bb6de0c56639a6f68afe01ecd92d91f14ae897c4fe7bbeeef0de", size = 163286, upload-time = "2025-10-05T04:12:14.03Z" },
+    { url = "https://files.pythonhosted.org/packages/70/7d/9bc192684cea499815ff478dfcdc13835ddf401365057044fb721ec6bddb/certifi-2025.11.12-py3-none-any.whl", hash = "sha256:97de8790030bbd5c2d96b7ec782fc2f7820ef8dba6db909ccf95449f2d062d4b", size = 159438, upload-time = "2025-11-12T02:54:49.735Z" },
 ]
 
 [[package]]
@@ -1022,7 +1022,7 @@ wheels = [
 [[package]]
 name = "mujoco-warp"
 version = "0.0.1"
-source = { git = "https://github.com/google-deepmind/mujoco_warp#5d5a6450a7699e695f1767efd7715251713da2ac" }
+source = { git = "https://github.com/google-deepmind/mujoco_warp#abb42dcf97eb67f494818d584e0c3f0cd16bb5f4" }
 dependencies = [
     { name = "absl-py" },
     { name = "etils", extra = ["epath"] },
@@ -1042,11 +1042,11 @@ wheels = [
 
 [[package]]
 name = "narwhals"
-version = "2.10.2"
+version = "2.11.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c5/dc/8db74daf8c2690ec696c1d772a33cc01511559ee8a9e92d7ed85a18e3c22/narwhals-2.10.2.tar.gz", hash = "sha256:ff738a08bc993cbb792266bec15346c1d85cc68fdfe82a23283c3713f78bd354", size = 584954, upload-time = "2025-11-04T16:36:42.281Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/a2/25208347aa4c2d82a265cf4bc0873aaf5069f525c0438146821e7fc19ef5/narwhals-2.11.0.tar.gz", hash = "sha256:d23f3ea7efc6b4d0355444a72de6b8fa3011175585246c3400c894a7583964af", size = 589233, upload-time = "2025-11-10T16:28:35.675Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/47/a9/9e02fa97e421a355fc5e818e9c488080fce04a8e0eebb3ed75a84f041c4a/narwhals-2.10.2-py3-none-any.whl", hash = "sha256:059cd5c6751161b97baedcaf17a514c972af6a70f36a89af17de1a0caf519c43", size = 419573, upload-time = "2025-11-04T16:36:40.574Z" },
+    { url = "https://files.pythonhosted.org/packages/c0/a1/4d21933898e23b011ae0528151b57a9230a62960d0919bf2ee48c7f5c20a/narwhals-2.11.0-py3-none-any.whl", hash = "sha256:a9795e1e44aa94e5ba6406ef1c5ee4c172414ced4f1aea4a79e5894f0c7378d4", size = 423069, upload-time = "2025-11-10T16:28:33.522Z" },
 ]
 
 [[package]]
@@ -1085,7 +1085,7 @@ wheels = [
 [[package]]
 name = "newton"
 version = "0.1.3"
-source = { git = "https://github.com/newton-physics/newton.git#e15698684b6bfa4c501d49fe938a2837e112380c" }
+source = { git = "https://github.com/newton-physics/newton.git#b719d9d0a29c2305cc64fca458f95ef9157ea325" }
 dependencies = [
     { name = "warp-lang" },
 ]
@@ -1808,7 +1808,7 @@ wheels = [
 
 [[package]]
 name = "rerun-sdk"
-version = "0.26.2"
+version = "0.27.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -1818,11 +1818,10 @@ dependencies = [
     { name = "typing-extensions" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4b/4a/767c20e1529d74d9be5b5e55c6c26b63a6918ef3c1709fc422d08a460114/rerun_sdk-0.26.2-cp39-abi3-macosx_10_12_x86_64.whl", hash = "sha256:3d4151c9a3484e112b53d1df90c8fa07397dc7b8bfbb420f09e011eff20f1ef2", size = 93349439, upload-time = "2025-10-27T11:34:10.745Z" },
-    { url = "https://files.pythonhosted.org/packages/2b/3d/d8dd0af9c287a85d51ec99d69406cc4b94a9feb1d6f192d3bbcaac9f0b81/rerun_sdk-0.26.2-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:03977d2aba4966d9a70b682eca196123fda11408fecd733441ede9916c6341e2", size = 86323042, upload-time = "2025-10-27T11:34:17.995Z" },
-    { url = "https://files.pythonhosted.org/packages/13/29/53d8d98799ab32418fd4ba6834d6a5749c31f56160d3c87f52a7219887e9/rerun_sdk-0.26.2-cp39-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:b6128c3c4f014cae5be18e4d37657c5932d1bcdb2ce5e9d4b488a6eed47f7437", size = 92677274, upload-time = "2025-10-27T11:34:22.601Z" },
-    { url = "https://files.pythonhosted.org/packages/f5/86/0b9c8f56398b4fc85f8e99279907c258413a297e5603f8f2537fe5806e51/rerun_sdk-0.26.2-cp39-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:a6f97b60aaa7d4e8c6124a3f6b97ce9dbd09520050955f0e0bdacb72b0eb106a", size = 98768129, upload-time = "2025-10-27T11:34:27.36Z" },
-    { url = "https://files.pythonhosted.org/packages/be/e7/99fc91c0f99f69d7d43e1db0a6f6cb8273ffc02111539bfc1fee43749bad/rerun_sdk-0.26.2-cp39-abi3-win_amd64.whl", hash = "sha256:a493ad6c8357022cba2ca6f8954a81d0faf984b0b22154eb1d976bfc7649df63", size = 84267089, upload-time = "2025-10-27T11:34:32.023Z" },
+    { url = "https://files.pythonhosted.org/packages/41/63/8ce6d1d7debdbdf0c53f89098afb363265c6abe8c70b4a60f125b53664b9/rerun_sdk-0.27.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:7d6a13ee42f1d15d55e11e66f7cfaee740d36a1b70ab953713f04729882aa0b9", size = 99948713, upload-time = "2025-11-11T14:45:57.78Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/34/86e8b47784d864e876973de80cb949655d085f8f44f40b7abbf7628cb335/rerun_sdk-0.27.0-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:b8557ca227133d33867332f77930e95cbae6a6090e92f548c9f00a6e1f08c1a6", size = 107340729, upload-time = "2025-11-11T14:46:02.816Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/93/5275526c1f925407f1fd69fdf6cd4fa7a0957d863624adf4417258d023ee/rerun_sdk-0.27.0-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:d85857dee2f5010b4f4423b03c7154b73293a13ba47fa3ceeaba69cd31b96f26", size = 114604773, upload-time = "2025-11-11T14:46:07.953Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/c7/cddfecbd9cfc41046e7e73bdf0ebbed83cf80e85def87f7378fe20b7febd/rerun_sdk-0.27.0-cp310-abi3-win_amd64.whl", hash = "sha256:a04d8a024805ede0bd9e7398aad0ae516c6b05b2182fabcb51858be78f88457b", size = 97857971, upload-time = "2025-11-11T14:46:12.211Z" },
 ]
 
 [[package]]
@@ -2409,16 +2408,16 @@ wheels = [
 
 [[package]]
 name = "warp-lang"
-version = "1.11.0.dev20251109"
+version = "1.11.0.dev20251111"
 source = { registry = "https://pypi.nvidia.com/" }
 dependencies = [
     { name = "numpy" },
 ]
 wheels = [
-    { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.11.0.dev20251109-py3-none-macosx_11_0_arm64.whl", hash = "sha256:4ea122c65f53020617d943e01f6cce6323b7d68eecd64327748b660e40a664b2" },
-    { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.11.0.dev20251109-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:cad02b0af23be7e51ccf51195b906a67e8998689922492b83ba65a0fee16dcb6" },
-    { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.11.0.dev20251109-py3-none-manylinux_2_34_aarch64.whl", hash = "sha256:ca77c51a40584c57e4d5801e69920f49b564be8af932a12442d4dfe489eb710b" },
-    { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.11.0.dev20251109-py3-none-win_amd64.whl", hash = "sha256:f65a6b50be1a1f2d401481738bfa52c0a91b869b167169d135961ee56a5522bb" },
+    { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.11.0.dev20251111-py3-none-macosx_11_0_arm64.whl", hash = "sha256:033cb7d65e9fa8d8dad86c2ea6c4ac77827c7fcce4a7d2a6e6dc8e2853333da0" },
+    { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.11.0.dev20251111-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:f098bd77e44aa81282c635d352fb02aa1ca42be7bab0a926fb5fe97a22457e64" },
+    { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.11.0.dev20251111-py3-none-manylinux_2_34_aarch64.whl", hash = "sha256:a3e297bb7d49c4e39990e95b7614d9a9b7c7f5d2e5a8d6424d4047979d932d0a" },
+    { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.11.0.dev20251111-py3-none-win_amd64.whl", hash = "sha256:e585a3c17e991f872704a13d3b149f3fc781494f9ed83c20df55ea916a1f8e08" },
 ]
 
 [[package]]
