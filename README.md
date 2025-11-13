@@ -10,7 +10,7 @@
   <a href="https://pytorch.org/">
     <img src="https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg" alt="PyTorch">
   </a>
-  <a href="https://arxiv.org/abs/xxxx">
+  <a href="http://arxiv.org/abs/2511.09484">
     <img src="https://img.shields.io/badge/arXiv-2406.12345-b31b1b.svg" alt="arXiv">
   </a>
   <a href="https://jc-bao.github.io/spider/">
@@ -205,4 +205,13 @@ uv run examples/run_mjwp.py viewer="rerun"
 ## Citation
 
 ```bibtex
+@misc{pan2025spiderscalablephysicsinformeddexterous,
+      title={SPIDER: Scalable Physics-Informed Dexterous Retargeting},
+      author={Chaoyi Pan and Changhao Wang and Haozhi Qi and Zixi Liu and Homanga Bharadhwaj and Akash Sharma and Tingfan Wu and Guanya Shi and Jitendra Malik and Francois Hogan},
+      year={2025},
+      eprint={2511.09484},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2511.09484},
+}
 ```
