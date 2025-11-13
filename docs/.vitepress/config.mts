@@ -3,10 +3,10 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: "SPIDER",
   description: "Scalable Physics-Informed DExterous Retargeting",
-  base: '/',
+  base: '/spider/',
 
   head: [
-    ['link', { rel: 'icon', href: '/spider/favicon.ico' }]
+    ['link', { rel: 'icon', href: '/favicon.ico' }]
   ],
 
   themeConfig: {
