@@ -160,6 +160,9 @@ uv run spider/preprocess/ik.py --task=${TASK} --dataset-name=${DATASET_NAME} --d
 
 # retargeting
 uv run examples/run_mjwp.py +override=${DATASET_NAME} task=${TASK} data_id=${DATA_ID} robot_type=${ROBOT_TYPE} embodiment_type=${HAND_TYPE}
+
+# read data for deployment (optional)
+uv run spider/postprocess/read_to_robot.py --task=${TASK} --dataset-name=${DATASET_NAME} --data-id=${DATA_ID} --robot-type=${ROBOT_TYPE} --embodiment-type=${HAND_TYPE}
 ```
 
 ### DexMachina Workflow

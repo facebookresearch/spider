@@ -8,16 +8,18 @@ import loop_rate_limiters
 import mujoco
 import mujoco.viewer
 import numpy as np
+import tyro
 
+from spider import ROOT
 from spider.io import get_processed_data_dir
 
 
 def main(
-    dataset_dir: str,
-    dataset_name: str,
-    robot_type: str,
-    embodiment_type: str,
-    task: str,
+    dataset_dir: str = f"{ROOT}/../example_datasets",
+    dataset_name: str = "oakink",
+    robot_type: str = "allegro",
+    embodiment_type: str = "bimanual",
+    task: str = "pick_spoon_bowl",
     data_type: str = "mjwp",
     data_id: int = 0,
     model_type: str = "standard",
@@ -93,17 +95,27 @@ def main(
                 mj_data.ctrl[:] = ctrl_list[step]
             mujoco.mj_step(mj_model, mj_data)
 
-            real_data["right_wrist_pos"][step] = mj_data.site_xpos[right_palm_site_id]
-            real_data["right_wrist_xmat"][step] = mj_data.site_xmat[
-                right_palm_site_id
-            ].reshape(3, 3)
-            real_data["right_joint_pos"][step] = mj_data.qpos[6:22]
+            if embodiment_type in ["right", "bimanual"]:
+                real_data["right_wrist_pos"][step] = mj_data.site_xpos[right_palm_site_id]
+                real_data["right_wrist_xmat"][step] = mj_data.site_xmat[
+                    right_palm_site_id
+                ].reshape(3, 3)
+                real_data["right_joint_pos"][step] = mj_data.qpos[6:22]
+            else:
+                real_data["right_wrist_pos"][step] = np.zeros(3)
+                real_data["right_wrist_xmat"][step] = np.eye(3)
+                real_data["right_joint_pos"][step] = np.zeros(16)
 
-            real_data["left_wrist_pos"][step] = mj_data.site_xpos[left_palm_site_id]
-            real_data["left_wrist_xmat"][step] = mj_data.site_xmat[
-                left_palm_site_id
-            ].reshape(3, 3)
-            real_data["left_joint_pos"][step] = mj_data.qpos[28:44]
+            if embodiment_type in ["left", "bimanual"]:
+                real_data["left_wrist_pos"][step] = mj_data.site_xpos[left_palm_site_id]
+                real_data["left_wrist_xmat"][step] = mj_data.site_xmat[
+                    left_palm_site_id
+                ].reshape(3, 3)
+                real_data["left_joint_pos"][step] = mj_data.qpos[28:44]
+            else:
+                real_data["left_wrist_pos"][step] = np.zeros(3)
+                real_data["left_wrist_xmat"][step] = np.eye(3)
+                real_data["left_joint_pos"][step] = np.zeros(16)
 
             right_object_pos = mj_data.site_xpos[right_object_site_id]
             right_object_xmat = mj_data.site_xmat[right_object_site_id].reshape(3, 3)
@@ -134,3 +146,6 @@ def main(
     if not saved:
         np.savez(output_path, **real_data)
     return real_data
+
+if __name__ == "__main__":
+    tyro.cli(main)
