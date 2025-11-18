@@ -8,22 +8,6 @@ The DexMachina workflow integrates SPIDER with [Genesis](https://genesis.github.
 
 Follow the [official DexMachina installation guide](https://mandizhao.github.io/dexmachina-docs/0_install.html):
 
-```bash
-# Create DexMachina conda environment
-conda create -n dexmachina python=3.12
-conda activate dexmachina
-
-# Install Genesis
-git clone https://github.com/Genesis-Embodied-AI/Genesis.git
-cd Genesis
-pip install -e .
-
-# Install DexMachina
-git clone https://github.com/MandiZhao/dexmachina.git
-cd dexmachina
-pip install -e .
-```
-
 ### Install SPIDER (Minimal)
 
 Install SPIDER without MuJoCo Warp (only need optimization components):
