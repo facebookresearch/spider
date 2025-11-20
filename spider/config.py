@@ -69,6 +69,8 @@ class Config:
     terminate_resample: bool = True
     object_pos_threshold: float = 0.03
     object_rot_threshold: float = 0.1
+    base_pos_threshold: float = 0.5
+    base_rot_threshold: float = 0.4
     # Compilation
     use_torch_compile: bool = True  # use torch.compile for acceleration
     # Noise scheduling

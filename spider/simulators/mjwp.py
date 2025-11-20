@@ -373,6 +373,18 @@ def get_terminate(
         terminate = (obj_pos_error > config.object_pos_threshold) | (
             obj_quat_error > config.object_rot_threshold
         )
+    elif config.embodiment_type in ["humanoid", "humanoid_object"]:
+        base_pos = qpos_sim[:, :3]
+        base_pos_ref = qpos_ref[:3].unsqueeze(0)
+        base_pos_error = torch.norm(base_pos - base_pos_ref, p=2, dim=1)
+        base_quat = qpos_sim[:, 3:7]
+        base_quat_ref = qpos_ref[3:7].unsqueeze(0)
+        base_quat_error = torch.norm(
+            quat_sub(base_quat, base_quat_ref.repeat(qpos_sim.shape[0], 1)), p=2, dim=1
+        )
+        terminate = (base_pos_error > config.base_pos_threshold) | (
+            base_quat_error > config.base_rot_threshold
+        )
     else:
         raise ValueError(f"Invalid embodiment_type: {config.embodiment_type}")
     return terminate

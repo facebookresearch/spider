@@ -36,32 +36,32 @@ This code base provides the following pipeline from human video to robot actions
 
 ### Simulation results:
 
-| Inspire Pick Tea Pot (Gigahands Dataset) | Xhand Play Glass (Hot3D dataset) | Schunk Pick Board (Oakink dataset) | Allegro Pick Cat Toy (Reconstructed from single RGB video)
-| ------- | ------- | ------- | ------- |
-| ![](figs/sim/inspire_pick_pot.gif) | ![](figs/sim/xhand_glass.gif) | ![](figs/sim/schunk_move_board.gif) | ![](figs/sim/allegro_pick_cat.gif) |
+| Inspire Pick Tea Pot (Gigahands Dataset) | Xhand Play Glass (Hot3D dataset) | Schunk Pick Board (Oakink dataset)  | Allegro Pick Cat Toy (Reconstructed from single RGB video) |
+| ---------------------------------------- | -------------------------------- | ----------------------------------- | ---------------------------------------------------------- |
+| ![](figs/sim/inspire_pick_pot.gif)       | ![](figs/sim/xhand_glass.gif)    | ![](figs/sim/schunk_move_board.gif) | ![](figs/sim/allegro_pick_cat.gif)                         |
 
 
-| G1 Pick | G1 Run | H1 Kick | T1 skip |
-| ------- | ------- | ------- | ------- |
+| G1 Pick                   | G1 Run                   | H1 Kick                   | T1 skip                   |
+| ------------------------- | ------------------------ | ------------------------- | ------------------------- |
 | ![](figs/sim/g1_pick.gif) | ![](figs/sim/g1_run.gif) | ![](figs/sim/h1_kick.gif) | ![](figs/sim/t1_skip.gif) |
 
 
 ### Multiple viewer support:
-| Mujoco | Rerun |
-| ------- | ------- |
+| Mujoco                              | Rerun                              |
+| ----------------------------------- | ---------------------------------- |
 | ![](figs/viewers/mujoco_viewer.gif) | ![](figs/viewers/rerun_viewer.gif) |
 
 
 ### Multiple simulators support:
 
-| Genesis | Mujoco Warp |
-| ------- | ------- |
+| Genesis                      | Mujoco Warp              |
+| ---------------------------- | ------------------------ |
 | ![](figs/sim/dexmachina.gif) | ![](figs/sim/mjwarp.gif) |
 
 ### Deployment to real-world robots:
 
-| Pick Cup | Rotate Bulb | Unplug Charger | Pick Duck |
-| ------- | ------- | ------- | ------- |
+| Pick Cup                         | Rotate Bulb                         | Unplug Charger                 | Pick Duck                         |
+| -------------------------------- | ----------------------------------- | ------------------------------ | --------------------------------- |
 | ![](figs/real/pick_cup_real.gif) | ![](figs/real/rotate_bulb_real.gif) | ![](figs/real/unplug_real.gif) | ![](figs/real/pick_duck_real.gif) |
 
 
@@ -90,12 +90,7 @@ git clone https://huggingface.co/datasets/retarget/retarget_example example_data
 Create env and install (make sure `uv` uses Python 3.12, which is what the project targets):
 
 ```bash
-# one-time install of the interpreter if you don't already have it
-uv python install 3.12
-
-# sync the .venv with that interpreter
-uv sync --python 3.12
-pip install --ignore-requires-python --no-deps -e .
+uv sync
 ```
 
 If you already have the example datasets cloned, you can skip the preprocessing step where we convert the human data to robot kinematic trajectories.

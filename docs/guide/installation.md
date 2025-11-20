@@ -30,12 +30,7 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 git clone https://github.com/jc-bao/spider.git
 cd spider
 
-# Install Python 3.12 if not already available
-uv python install 3.12
-
-# Sync dependencies and install SPIDER
-uv sync --python 3.12
-pip install --ignore-requires-python --no-deps -e .
+uv sync
 ```
 
 ### Clone Example Datasets
