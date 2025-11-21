@@ -2,7 +2,7 @@
   <compiler angle="radian" meshdir="../../../assets/robots/unitree_g1/meshes" autolimits="true" />
 
   <!-- performance options -->
-  <option timestep="0.01" iterations="5" ls_iterations="20" integrator="implicitfast">
+  <option timestep="0.02" iterations="2" ls_iterations="10">
     <flag eulerdamp="disable" />
   </option>
 
@@ -26,88 +26,81 @@
         <geom group="2" type="mesh" density="0" material="silver" />
       </default>
       <default class="collision">
-        <geom group="3" rgba="0 1 0 1" />
+        <geom group="3" rgba="0 1 0 1" type="sphere" />
+        <default class="hand_collision">
+          <geom type="sphere" pos="0.1 0.0 0.0" size="0.05" />
+        </default>
+        <default class="foot_collision">
+          <geom type="sphere" size="0.005" priority="1" friction="2.0" condim="3" />
+        </default>
+
       </default>
       <site group="5" rgba="1 0 0 1" />
       <!-- Disable all contacts and use explicit contact pairs. -->
       <geom condim="1" contype="0" conaffinity="0" />
       <position kp="500" dampratio="1" inheritrange="1" />
-      <joint frictionloss="0.1" solimplimit="0.97 0.995 0.001" />
+      <joint damping="0.0" armature="1.0" frictionloss="0.0" />
 
       <default class="hip">
         <default class="hip_pitch">
-          <joint axis="0 1 0" range="-2.5307 2.8798" armature="0.01017752004" damping="2.5579" />
-          <position kp="40.1792" dampratio="1" inheritrange="1" />
+          <joint axis="0 1 0" range="-2.5307 2.8798" />
         </default>
         <default class="hip_roll">
-          <joint axis="1 0 0" range="-0.5236 2.9671" armature="0.025101925" damping="6.3088" />
-          <position kp="99.0984" dampratio="1" inheritrange="1" />
+          <joint axis="1 0 0" range="-0.5236 2.9671" />
         </default>
         <default class="hip_yaw">
-          <joint axis="0 0 1" range="-2.7576 2.7576" armature="0.01017752004" damping="2.5579" />
-          <position kp="40.1792" dampratio="1" inheritrange="1" />
+          <joint axis="0 0 1" range="-2.7576 2.7576" />
         </default>
       </default>
       <default class="knee">
-        <joint axis="0 1 0" range="-0.087267 2.8798" armature="0.025101925" damping="6.3088" />
-        <position kp="99.0984" dampratio="1" inheritrange="1" />
+        <joint axis="0 1 0" range="-0.087267 2.8798" />
       </default>
       <default class="ankle">
+        <position kp="500" dampratio="1" inheritrange="1" />
         <default class="ankle_pitch">
-          <joint axis="0 1 0" range="-0.87267 0.5236" armature="0.00721945" damping="1.8144" />
-          <position kp="28.5012" dampratio="1" inheritrange="1" />
+          <joint axis="0 1 0" range="-0.87267 0.5236" />
         </default>
         <default class="ankle_roll">
-          <joint axis="1 0 0" range="-0.2618 0.2618" armature="0.00721945" damping="1.8144" />
-          <position kp="28.5012" dampratio="1" inheritrange="1" />
+          <joint axis="1 0 0" range="-0.2618 0.2618" />
         </default>
       </default>
 
       <default class="waist_yaw">
-        <joint axis="0 0 1" range="-2.618 2.618" armature="0.01017752004" damping="2.5579" />
-        <position kp="40.1792" dampratio="1" inheritrange="1" />
+        <joint axis="0 0 1" range="-2.618 2.618" />
       </default>
       <default class="waist_pitch">
-        <joint axis="0 1 0" range="-0.52 0.52" armature="0.00721945" damping="1.8144" />
-        <position kp="28.5012" dampratio="1" inheritrange="1" />
+        <joint axis="0 1 0" range="-0.52 0.52" />
       </default>
       <default class="waist_roll">
-        <joint axis="1 0 0" range="-0.52 0.52" armature="0.00721945" damping="1.8144" />
-        <position kp="28.5012" dampratio="1" inheritrange="1" />
+        <joint axis="1 0 0" range="-0.52 0.52" />
       </default>
 
       <default class="shoulder">
         <default class="shoulder_pitch">
-          <joint axis="0 1 0" range="-3.0892 2.6704" armature="0.003609725" damping="0.9072" />
-          <position kp="14.2506" dampratio="1" inheritrange="1" />
+          <joint axis="0 1 0" range="-3.0892 2.6704" />
         </default>
         <default class="shoulder_roll">
-          <joint axis="1 0 0" armature="0.003609725" damping="0.9072" />
-          <position kp="14.2506" dampratio="1" inheritrange="1" />
+          <joint axis="1 0 0" />
         </default>
         <default class="shoulder_yaw">
-          <joint axis="0 0 1" range="-2.618 2.618" armature="0.003609725" damping="0.9072" />
-          <position kp="14.2506" dampratio="1" inheritrange="1" />
+          <joint axis="0 0 1" range="-2.618 2.618" />
         </default>
       </default>
 
       <default class="elbow">
-        <joint axis="0 1 0" range="-1.0472 2.0944" armature="0.003609725" damping="0.9072" />
-        <position kp="14.2506" dampratio="1" inheritrange="1" />
+        <joint axis="0 1 0" range="-1.0472 2.0944" />
       </default>
 
       <default class="wrist">
+        <position kp="500" dampratio="1" inheritrange="1" />
         <default class="wrist_roll">
-          <joint axis="1 0 0" range="-1.97222 1.97222" armature="0.003609725" damping="0.9072" />
-          <position kp="14.2506" dampratio="1" inheritrange="1" />
+          <joint axis="1 0 0" range="-1.97222 1.97222" />
         </default>
         <default class="wrist_pitch">
-          <joint axis="0 1 0" range="-1.61443 1.61443" armature="0.00425" damping="1.0681" />
-          <position kp="16.7783" dampratio="1" inheritrange="1" />
+          <joint axis="0 1 0" range="-1.61443 1.61443" />
         </default>
         <default class="wrist_yaw">
-          <joint axis="0 0 1" range="-1.61443 1.61443" armature="0.00425" damping="1.0681" />
-          <position kp="16.7783" dampratio="1" inheritrange="1" />
+          <joint axis="0 0 1" range="-1.61443 1.61443" />
         </default>
       </default>
     </default>
@@ -205,7 +198,10 @@
                 diaginertia="0.0113804 0.0112778 0.00146458" />
               <joint name="left_knee_joint" class="knee" />
               <geom class="visual" mesh="left_knee_link" />
-              <geom name="left_shin" class="collision" type="capsule" size="0.04" fromto="0.02 0 0 0.02 0 -0.25" />
+              <!-- <geom name="left_shin_collision" class="collision" size="0.045"
+                fromto="0.01 0 0 0.01 0 -0.15" />
+              <geom name="left_linkage_brace_collision" class="collision" size="0.03"
+                fromto="0.01 0 -0.2 0.01 0 -0.28" /> -->
               <body name="left_ankle_pitch_link" pos="0 -9.4445e-05 -0.30001">
                 <inertial pos="-0.007269 0 0.011137" quat="0.603053 0.369225 0.369225 0.603053"
                   mass="0.074"
@@ -219,13 +215,10 @@
                     diaginertia="0.00167218 0.0016161 0.000217621" />
                   <joint name="left_ankle_roll_joint" class="ankle_roll" />
                   <geom class="visual" material="black" mesh="left_ankle_roll_link" />
-                  <geom name="left_foot1_collision" class="collision" type="capsule" size="0.01" fromto="0.1 -0.026 -0.025 0.05 -0.027 -0.025" />
-                  <geom name="left_foot2_collision" class="collision" type="capsule" size="0.01" fromto="-0.044 -0.018 -0.025 0.123 -0.018 -0.025" />
-                  <geom name="left_foot3_collision" class="collision" type="capsule" size="0.01" fromto="-0.052 -0.01 -0.025 0.13 -0.01 -0.025" />
-                  <geom name="left_foot4_collision" class="collision" type="capsule" size="0.01" fromto="-0.054 0 -0.025 0.132 0 -0.025" />
-                  <geom name="left_foot5_collision" class="collision" type="capsule" size="0.01" fromto="-0.052 0.01 -0.025 0.13 0.01 -0.025" />
-                  <geom name="left_foot6_collision" class="collision" type="capsule" size="0.01" fromto="-0.044 0.018 -0.025 0.123 0.018 -0.025" />
-                  <geom name="left_foot7_collision" class="collision" type="capsule" size="0.01" fromto="0.1 0.026 -0.025 0.05 0.026 -0.025" />
+                  <geom name="lf0" class="foot_collision" pos="-0.05 0.025 -0.03" />
+                  <geom name="lf1" class="foot_collision" pos="-0.05 -0.025 -0.03" />
+                  <geom name="lf2" class="foot_collision" pos="0.12 0.03 -0.03" />
+                  <geom name="lf3" class="foot_collision" pos="0.12 -0.03 -0.03" />
                   <site name="trace_left_foot" size="0.01" pos="0.04 0 -0.037" />
                 </body>
               </body>
@@ -262,7 +255,10 @@
                 diaginertia="0.011374 0.0112843 0.00146452" />
               <joint name="right_knee_joint" class="knee" />
               <geom class="visual" mesh="right_knee_link" />
-              <geom name="right_shin" class="collision" type="capsule" size="0.04" fromto="0.02 0 0 0.02 0 -0.25" />
+              <!-- <geom name="right_shin_collision" class="collision" size="0.045"
+                fromto="0.01 0 0 0.01 0 -0.15" />
+              <geom name="right_linkage_brace_collision" class="collision" size="0.03"
+                fromto="0.01 0 -0.2 0.01 0 -0.28" /> -->
               <body name="right_ankle_pitch_link" pos="0 9.4445e-05 -0.30001">
                 <inertial pos="-0.007269 0 0.011137" quat="0.603053 0.369225 0.369225 0.603053"
                   mass="0.074"
@@ -276,13 +272,10 @@
                     diaginertia="0.00167218 0.0016161 0.000217621" />
                   <joint name="right_ankle_roll_joint" class="ankle_roll" />
                   <geom class="visual" material="black" mesh="right_ankle_roll_link" />
-                  <geom name="right_foot1_collision" class="collision" type="capsule" size="0.01" fromto="0.1 -0.026 -0.025 0.05 -0.026 -0.025" />
-                  <geom name="right_foot2_collision" class="collision" type="capsule" size="0.008" fromto="-0.044 -0.018 -0.025 0.123 -0.018 -0.025" />
-                  <geom name="right_foot3_collision" class="collision" type="capsule" size="0.01" fromto="-0.052 -0.01 -0.025 0.13 -0.01 -0.025" />
-                  <geom name="right_foot4_collision" class="collision" type="capsule" size="0.01" fromto="-0.054 0 -0.025 0.132 0 -0.025" />
-                  <geom name="right_foot5_collision" class="collision" type="capsule" size="0.01" fromto="-0.052 0.01 -0.025 0.13 0.01 -0.025" />
-                  <geom name="right_foot6_collision" class="collision" type="capsule" size="0.008" fromto="-0.044 0.018 -0.025 0.123 0.018 -0.025" />
-                  <geom name="right_foot7_collision" class="collision" type="capsule" size="0.01" fromto="0.1 0.026 -0.025 0.05 0.026 -0.025" />
+                  <geom name="rf0" class="foot_collision" pos="-0.05 0.025 -0.03" />
+                  <geom name="rf1" class="foot_collision" pos="-0.05 -0.025 -0.03" />
+                  <geom name="rf2" class="foot_collision" pos="0.12 0.03 -0.03" />
+                  <geom name="rf3" class="foot_collision" pos="0.12 -0.03 -0.03" />
                   <site name="trace_right_foot" size="0.01" pos="0.04 0 -0.037" />
                 </body>
               </body>
@@ -367,7 +360,10 @@
                           <geom pos="0.0415 0.003 0" quat="1 0 0 0" class="visual"
                             mesh="left_rubber_hand" />
                           <site name="left_palm" pos="0.08 0 0" size="0.01" />
-                          <geom name="left_hand_collision" class="collision" type="capsule" size="0.05" fromto="0.05 0 0 0.1 0 0" />
+                          <!-- <geom name="left_hand_collision" class="collision" size="0.035"
+                            rgba=".2 .6 .2 .2"
+                            fromto="0.07 0 0 0.15 -0.02 0" /> -->
+                          <geom name="lh" class="hand_collision" />
                           <site name="trace_left_hand" size="0.01" pos="0.08 0 0" />
                         </body>
                       </body>
@@ -429,7 +425,10 @@
                           <geom pos="0.0415 -0.003 0" quat="1 0 0 0" class="visual"
                             mesh="right_rubber_hand" />
                           <site name="right_palm" pos="0.08 0 0" size="0.01" />
-                          <geom name="right_hand_collision" class="collision" type="capsule" size="0.05" fromto="0.05 0 0 0.1 0 0" />
+                          <!-- <geom name="right_hand_collision" class="collision" size="0.035"
+                            rgba=".2 .6 .2 .2"
+                            fromto="0.07 0 0 0.15 0.02 0" /> -->
+                          <geom name="rh" class="hand_collision" />
                           <site name="trace_right_hand" size="0.01" pos="0.08 0 0" />
                         </body>
                       </body>
@@ -501,45 +500,25 @@
   </sensor> -->
 
   <contact>
-    <pair name="left_foot_floor1" geom1="left_foot1_collision" geom2="floor" solref="0.002 1"
+    <pair name="left_foot_floor0" geom1="lf0" geom2="floor" solref="0.008 1"
       friction="1 1" condim="3" />
-    <pair name="left_foot_floor2" geom1="left_foot2_collision" geom2="floor" solref="0.002 1"
+    <pair name="left_foot_floor1" geom1="lf1" geom2="floor" solref="0.008 1"
       friction="1 1" condim="3" />
-    <pair name="left_foot_floor3" geom1="left_foot3_collision" geom2="floor" solref="0.002 1"
+    <pair name="left_foot_floor2" geom1="lf2" geom2="floor" solref="0.008 1"
       friction="1 1" condim="3" />
-    <pair name="left_foot_floor4" geom1="left_foot4_collision" geom2="floor" solref="0.002 1"
+    <pair name="left_foot_floor3" geom1="lf3" geom2="floor" solref="0.008 1"
       friction="1 1" condim="3" />
-    <pair name="left_foot_floor5" geom1="left_foot5_collision" geom2="floor" solref="0.002 1"
+    <pair name="right_foot_floor0" geom1="rf0" geom2="floor" solref="0.008 1"
       friction="1 1" condim="3" />
-    <pair name="left_foot_floor6" geom1="left_foot6_collision" geom2="floor" solref="0.002 1"
+    <pair name="right_foot_floor1" geom1="rf1" geom2="floor" solref="0.008 1"
       friction="1 1" condim="3" />
-    <pair name="left_foot_floor7" geom1="left_foot7_collision" geom2="floor" solref="0.002 1"
+    <pair name="right_foot_floor2" geom1="rf2" geom2="floor" solref="0.008 1"
       friction="1 1" condim="3" />
-    <pair name="right_foot_floor1" geom1="right_foot1_collision" geom2="floor" solref="0.002 1"
+    <pair name="right_foot_floor3" geom1="rf3" geom2="floor" solref="0.008 1"
       friction="1 1" condim="3" />
-    <pair name="right_foot_floor2" geom1="right_foot2_collision" geom2="floor" solref="0.002 1"
+    <pair name="left_hand_floor" geom1="lh" geom2="floor" solref="0.008 1"
       friction="1 1" condim="3" />
-    <pair name="right_foot_floor3" geom1="right_foot3_collision" geom2="floor" solref="0.002 1"
+    <pair name="right_hand_floor" geom1="rh" geom2="floor" solref="0.008 1"
       friction="1 1" condim="3" />
-    <pair name="right_foot_floor4" geom1="right_foot4_collision" geom2="floor" solref="0.002 1"
-      friction="1 1" condim="3" />
-    <pair name="right_foot_floor5" geom1="right_foot5_collision" geom2="floor" solref="0.002 1"
-      friction="1 1" condim="3" />
-    <pair name="right_foot_floor6" geom1="right_foot6_collision" geom2="floor" solref="0.002 1"
-      friction="1 1" condim="3" />
-    <pair name="right_foot_floor7" geom1="right_foot7_collision" geom2="floor" solref="0.002 1"
-      friction="1 1" condim="3" />
-    <pair name="left_hand_floor" geom1="left_hand_collision" geom2="floor" solref="0.002 1"
-      friction="1 1" condim="3" />
-    <pair name="right_hand_floor" geom1="right_hand_collision" geom2="floor" solref="0.002 1"
-      friction="1 1" condim="3" />
-
-      <!-- shin contact -->
-      <pair name="left_shin_floor" geom1="left_shin" geom2="floor" solref="0.002 1"
-        friction="1 1" condim="3" />
-      <pair name="right_shin_floor" geom1="right_shin" geom2="floor" solref="0.002 1"
-        friction="1 1" condim="3" />
-      <pair name="left_right_shin" geom1="left_shin" geom2="right_shin" solref="0.002 1"
-        friction="1 1" condim="3" />
   </contact>
 </mujoco>

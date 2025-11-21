@@ -96,7 +96,9 @@ def main(
             mujoco.mj_step(mj_model, mj_data)
 
             if embodiment_type in ["right", "bimanual"]:
-                real_data["right_wrist_pos"][step] = mj_data.site_xpos[right_palm_site_id]
+                real_data["right_wrist_pos"][step] = mj_data.site_xpos[
+                    right_palm_site_id
+                ]
                 real_data["right_wrist_xmat"][step] = mj_data.site_xmat[
                     right_palm_site_id
                 ].reshape(3, 3)
@@ -146,6 +148,7 @@ def main(
     if not saved:
         np.savez(output_path, **real_data)
     return real_data
+
 
 if __name__ == "__main__":
     tyro.cli(main)
