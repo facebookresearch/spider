@@ -43,6 +43,7 @@ num_samples: 1024
 temperature: 0.1
 max_num_iterations: 32
 improvement_threshold: 0.01
+improvement_check_steps: 1
 # Noise scheduling
 first_ctrl_noise_scale: 0.5
 last_ctrl_noise_scale: 1.0

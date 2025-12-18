@@ -405,7 +405,7 @@ def make_optimize_fn(
                 ):
                     break
 
-        # TODO: think about a better logic
+        # TODO: a better way to handle the length of infos
         # append zeros to infos to make sure the length is the same as max_num_iterations
         fake_info = {}
         for k, v in infos[0].items():

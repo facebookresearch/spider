@@ -182,7 +182,7 @@ def main(
     object_solimp_width: float = 0.001,
     max_num_initial_guess: int = 8,
     average_frame_size: int = 3,
-    aggregate_contact: bool = True,
+    aggregate_contact: bool = False,
     z_offset: float = 0.0,
 ):
     # resolved processed directories
