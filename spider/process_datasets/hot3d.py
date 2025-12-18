@@ -33,7 +33,10 @@ import numpy as np
 import pymeshlab
 import torch
 import tyro
-from projectaria_tools.core.sensor_data import TimeDomain, TimeQueryOptions
+try:
+    from projectaria_tools.core.sensor_data import TimeDomain, TimeQueryOptions
+except ImportError:
+    raise ImportError("projectaria_tools is not installed. Please install it from https://github.com/facebookresearch/projectaria_tools.")
 from scipy.spatial.transform import Rotation
 
 from dataset_api import Hot3dDataProvider  # type: ignore  # noqa: E402

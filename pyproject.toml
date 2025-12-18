@@ -23,6 +23,7 @@ dependencies = [
   "ipdb",
   "pymeshlab",
   "open3d",
+  "ipykernel",
 ]
 
 [project.scripts]

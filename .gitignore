@@ -203,6 +203,7 @@ outputs/
 
 submitit/
 example_datasets/
+example_video_data/
 tmp/
 
 # VitePress documentation

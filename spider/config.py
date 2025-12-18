@@ -26,7 +26,7 @@ from spider.io import get_processed_data_dir
 @dataclass
 class Config:
     # === TASK CONFIGURATION ===
-    robot_type: str = "allegro"  # "inspire", "allegro", "g1"
+    robot_type: str = "xhand"  # "inspire", "allegro", "g1"
     embodiment_type: str = "bimanual"  # "left", "right", "bimanual", "CMU"
     task: str = "pick_spoon_bowl"
 
@@ -38,12 +38,12 @@ class Config:
     data_path: str = ""
 
     # === SIMULATOR CONFIGURATION ===
-    simulator: str = "isaac"  # "isaac" | "mujoco" | "mjwp" | "mjwp_cons" | "mjwp_eq" | "mjwp_cons_eq" | "kinematic"
+    simulator: str = "mjwp"  # "isaac" | "mujoco" | "mjwp" | "mjwp_cons" | "mjwp_eq" | "mjwp_cons_eq" | "kinematic"
     device: str = "cuda:0"
     # Simulation timing
     sim_dt: float = 0.01  # simulation timestep
-    ctrl_dt: float = 0.2  # control timestep
-    ref_dt: float = 1 / 50.0  # reference data timestep
+    ctrl_dt: float = 0.4  # control timestep
+    ref_dt: float = 0.02  # reference data timestep
     render_dt: float = 0.02  # rendering timestep
     horizon: float = 1.2  # planning horizon
     knot_dt: float = 0.4  # knot point spacing
@@ -73,8 +73,8 @@ class Config:
     improvement_check_steps: int = 1
     # Termination parameters
     terminate_resample: bool = True
-    object_pos_threshold: float = 0.03
-    object_rot_threshold: float = 0.1
+    object_pos_threshold: float = 0.1
+    object_rot_threshold: float = 0.3
     base_pos_threshold: float = 0.5
     base_rot_threshold: float = 0.4
     # Compilation
@@ -87,14 +87,14 @@ class Config:
     exploit_noise_scale: float = 0.01
     # Noise scaling by component
     joint_noise_scale: float = 0.3
-    pos_noise_scale: float = 0.003
-    rot_noise_scale: float = 0.003
+    pos_noise_scale: float = 0.01
+    rot_noise_scale: float = 0.03
     # Reward scaling
-    base_pos_rew_scale: float = 0.03
-    base_rot_rew_scale: float = 0.01
+    base_pos_rew_scale: float = 1.0
+    base_rot_rew_scale: float = 0.3
     joint_rew_scale: float = 0.003
     pos_rew_scale: float = 1.0
-    rot_rew_scale: float = 0.1
+    rot_rew_scale: float = 0.3
     vel_rew_scale: float = 0.0001
     terminal_rew_scale: float = 1.0
     contact_rew_scale: float = 0.0
