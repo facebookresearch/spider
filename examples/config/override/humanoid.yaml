@@ -26,6 +26,6 @@ num_samples: 2048
 vel_rew_scale: 0.0
 joint_rew_scale: 1.0
 pos_rew_scale: 3.0
-rot_rew_scale: 3.0
+rot_rew_scale: 1.0
 contact_rew_scale: 1.0
 # note: above parameter is optimized for speed. you can have better performance with horizon=1.0

@@ -21,13 +21,13 @@ joint_noise_scale: 0.1
 # sampling
 improvement_threshold: 0.01
 max_num_iterations: 16
-temperature: 0.1
+temperature: 1.0
 num_samples: 2048
 # reward
 vel_rew_scale: 0.0
 joint_rew_scale: 1.0
 base_pos_rew_scale: 1.0
 base_rot_rew_scale: 1.0
-pos_rew_scale: 3.0
-rot_rew_scale: 3.0
+pos_rew_scale: 1.0
+rot_rew_scale: 0.3
 # note: above parameter is optimized for speed. you can have better performance with horizon=1.0
