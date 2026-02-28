@@ -1,0 +1,21 @@
+# @package _global_
+dataset_name: fair_fre
+task: pick_up
+robot_type: xhand
+embodiment_type: right
+data_id: 4
+temperature: 1.0
+num_samples: 1024
+ctrl_dt: 0.1
+knot_dt: 0.2
+horizon: 0.4
+first_ctrl_noise_scale: 1.0
+last_ctrl_noise_scale: 3.0
+improvement_threshold: 0.01
+improvement_check_steps: 2
+max_num_iterations: 8
+base_pos_rew_scale: 0.1
+base_rot_rew_scale: 0.03
+joint_noise_scale: 0.1
+pos_noise_scale: 0.01
+rot_noise_scale: 0.01
