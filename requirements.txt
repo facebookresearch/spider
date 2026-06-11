@@ -1,6 +1,6 @@
 # Sync this file with uv.lock when updating dependencies.
 numpy==2.3.4
-torch==2.9.0
+torch==2.12.0
 loguru==0.7.3
 tyro==0.9.35
 loop-rate-limiters==1.2.0
