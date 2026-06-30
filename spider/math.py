@@ -35,7 +35,7 @@ def quat_wxyz2xyzw(quat_wxyz: torch.Tensor) -> torch.Tensor:
     Returns:
         quat_xyzw: Quaternion in xyzw format, shape (..., 4)
     """
-    return torch.cat([quat_wxyz[..., 0:3], quat_wxyz[..., 3:4]], dim=-1)
+    return torch.cat([quat_wxyz[..., 1:4], quat_wxyz[..., 0:1]], dim=-1)
 
 
 def quat_to_vel(quat: torch.Tensor) -> torch.Tensor:
