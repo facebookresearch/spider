@@ -13,6 +13,9 @@ hero:
       text: Get Started
       link: /guide/quick-start
     - theme: alt
+      text: Released Dataset
+      link: /usage/lifted-datasets
+    - theme: alt
       text: View on GitHub
       link: https://github.com/facebookresearch/spider
 
@@ -33,6 +36,13 @@ features:
     title: Sim2Real Ready
     details: Optimized trajectories can be directly deployed to real-world robots with minimal adjustments
 ---
+
+## News
+
+- **2026-09-22:** [SPIDER retarget_full is released](https://huggingface.co/datasets/retarget/retarget_full): **7,876 successful trajectories** from 2,885 source episodes, covering DexYCB, HOT3D v2, HRDexDB, and OakInk with Allegro, Xhand, Inspire, and Sharpa. [Download and inspect with Viser](./usage/lifted-datasets.md).
+
+The downloader and Viser inspector are included in SPIDER; see the
+[loading and inspection guide](./usage/lifted-datasets.md) to get started.
 
 ## Quick Example
 

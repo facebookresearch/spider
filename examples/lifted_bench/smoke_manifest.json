@@ -1,0 +1,146 @@
+[
+  {
+    "dataset": "dexycb_lifted",
+    "task": "dexycb_01_right_002_master_chef_can_20200709_141754_00",
+    "robot_type": "allegro",
+    "campaign": "full1",
+    "seed": 0,
+    "embodiment_type": "right",
+    "data_id": 0
+  },
+  {
+    "dataset": "dexycb_lifted",
+    "task": "dexycb_01_right_002_master_chef_can_20200709_141754_00",
+    "robot_type": "xhand",
+    "campaign": "full1",
+    "seed": 0,
+    "embodiment_type": "right",
+    "data_id": 0
+  },
+  {
+    "dataset": "dexycb_lifted",
+    "task": "dexycb_01_right_002_master_chef_can_20200709_141754_00",
+    "robot_type": "inspire",
+    "campaign": "full1",
+    "seed": 0,
+    "embodiment_type": "right",
+    "data_id": 0
+  },
+  {
+    "dataset": "dexycb_lifted",
+    "task": "dexycb_01_right_002_master_chef_can_20200709_141754_00",
+    "robot_type": "sharpa",
+    "campaign": "full1",
+    "seed": 0,
+    "embodiment_type": "right",
+    "data_id": 0
+  },
+  {
+    "dataset": "hrdexdb_24f",
+    "task": "apple-0",
+    "robot_type": "allegro",
+    "campaign": "full1",
+    "seed": 0,
+    "embodiment_type": "right",
+    "data_id": 0
+  },
+  {
+    "dataset": "hrdexdb_24f",
+    "task": "apple-0",
+    "robot_type": "xhand",
+    "campaign": "full1",
+    "seed": 0,
+    "embodiment_type": "right",
+    "data_id": 0
+  },
+  {
+    "dataset": "hrdexdb_24f",
+    "task": "apple-0",
+    "robot_type": "inspire",
+    "campaign": "full1",
+    "seed": 0,
+    "embodiment_type": "right",
+    "data_id": 0
+  },
+  {
+    "dataset": "hrdexdb_24f",
+    "task": "apple-0",
+    "robot_type": "sharpa",
+    "campaign": "full1",
+    "seed": 0,
+    "embodiment_type": "right",
+    "data_id": 0
+  },
+  {
+    "dataset": "oakink_lifted",
+    "task": "oakink_0000_right_A01002_00",
+    "robot_type": "allegro",
+    "campaign": "full1",
+    "seed": 0,
+    "embodiment_type": "right",
+    "data_id": 0
+  },
+  {
+    "dataset": "oakink_lifted",
+    "task": "oakink_0000_right_A01002_00",
+    "robot_type": "xhand",
+    "campaign": "full1",
+    "seed": 0,
+    "embodiment_type": "right",
+    "data_id": 0
+  },
+  {
+    "dataset": "oakink_lifted",
+    "task": "oakink_0000_right_A01002_00",
+    "robot_type": "inspire",
+    "campaign": "full1",
+    "seed": 0,
+    "embodiment_type": "right",
+    "data_id": 0
+  },
+  {
+    "dataset": "oakink_lifted",
+    "task": "oakink_0000_right_A01002_00",
+    "robot_type": "sharpa",
+    "campaign": "full1",
+    "seed": 0,
+    "embodiment_type": "right",
+    "data_id": 0
+  },
+  {
+    "dataset": "hot3d_v2",
+    "task": "aria_P0001-10a27bf7_right_dumbbell_5lb_01",
+    "robot_type": "allegro",
+    "campaign": "hv3",
+    "seed": 0,
+    "embodiment_type": "right",
+    "data_id": 0
+  },
+  {
+    "dataset": "hot3d_v2",
+    "task": "aria_P0001-10a27bf7_right_dumbbell_5lb_01",
+    "robot_type": "xhand",
+    "campaign": "hv3",
+    "seed": 0,
+    "embodiment_type": "right",
+    "data_id": 0
+  },
+  {
+    "dataset": "hot3d_v2",
+    "task": "aria_P0001-10a27bf7_right_dumbbell_5lb_01",
+    "robot_type": "inspire",
+    "campaign": "hv3",
+    "seed": 0,
+    "embodiment_type": "right",
+    "data_id": 0
+  },
+  {
+    "dataset": "hot3d_v2",
+    "task": "aria_P0001-10a27bf7_right_dumbbell_5lb_01",
+    "robot_type": "sharpa",
+    "campaign": "hv3",
+    "seed": 0,
+    "embodiment_type": "right",
+    "data_id": 0
+  }
+]

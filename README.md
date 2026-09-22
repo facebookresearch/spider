@@ -23,13 +23,18 @@
 
   <a href="https://jc-bao.github.io/spider-project/"><b>Project Website</b></a> •
   <a href="https://facebookresearch.github.io/spider/"><b>Documentation</b></a> •
-  <a href="https://huggingface.co/datasets/retarget/retarget_example"><b>Dataset</b></a>
+  <a href="https://huggingface.co/datasets/retarget/retarget_example"><b>Example Dataset</b></a> •
+  <a href="https://huggingface.co/datasets/retarget/retarget_full"><b>Full Dataset</b></a>
 
 </p>
 
 ![logo](figs/teaser.png)
 
 </div>
+
+## News
+
+- **2026-09-22:** Released [SPIDER retarget_full](https://huggingface.co/datasets/retarget/retarget_full): **7,876 successful trajectories** from 2,885 source episodes across four datasets and four robot hands. [Download and inspect with Viser](#released-dataset).
 
 ## Overview
 
@@ -148,6 +153,32 @@ Run MJWP on a processed trial:
 ```bash
 python examples/run_mjwp.py
 ```
+
+## Released dataset
+
+[SPIDER retarget_full](https://huggingface.co/datasets/retarget/retarget_full) contains
+**7,876 successful right-hand trajectories** from DexYCB, HOT3D v2, HRDexDB, and
+OakInk, retargeted to Allegro, Xhand, Inspire, and Sharpa. It follows the existing
+`retarget/retarget_example` directory convention and includes portable scenes,
+meshes, human keypoints, IK references, and recorded robot trajectories.
+
+The downloader and Viser inspector are included in SPIDER. From the repository root:
+
+```bash
+uv sync --frozen
+uv run -m examples.lifted_bench.download_release --output-dir example_datasets/retarget_full
+uv run examples/inspect_dataset.py --dataset-dir example_datasets/retarget_full
+```
+
+Open `http://localhost:8080` to select a trial, scrub frames, and play trajectories.
+The bulk downloader verifies the archive and extracted file checksums. Public
+downloads and inspection do not require access to the internal source archive.
+
+All 7,876 trajectories passed checks after download; 35 default-render checks
+passed. See the [release report](https://huggingface.co/datasets/retarget/retarget_full/blob/main/FULL_RELEASE.md),
+[loading and inspection guide](docs/usage/lifted-datasets.md), and
+[conversion and release plan](docs/development/dataset-release-plan.md).
+Verification covers saved-state replay; it does not establish control-replay dynamics equivalence.
 
 ## Workflow
 

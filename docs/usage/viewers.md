@@ -16,6 +16,17 @@ To enable both, try `mujoco-rerun` or `mujoco-viser` viewer.
 
 ## Viser Viewer
 
+For **saved dataset results**, use the dataset inspector:
+
+```bash
+uv run examples/inspect_dataset.py --dataset-dir example_datasets
+```
+
+It discovers standard processed trials and provides a trial selector, playback,
+frame scrubbing, and an IK-reference overlay at `http://localhost:8080`. It runs on
+CPU without starting retargeting. See [lifted datasets](lifted-datasets.md) for
+conversion, download, and smoke-test instructions.
+
 [Viser](https://github.com/nerfstudio-project/viser) provides a lightweight web-based viewer for 3D scenes.
 
 ### Local Usage

@@ -257,12 +257,46 @@ def _ensure_names(spec: mujoco.MjSpec) -> None:
 # -----------------------------
 
 
-def init_viser(app_name: str = "spider", spawn: bool | None = None) -> None:
+def init_viser(
+    app_name: str = "spider",
+    spawn: bool | None = None,
+    host: str = "0.0.0.0",
+    port: int = 8080,
+) -> Any:
     """Initialize Viser server (spawn unused, kept for drop-in compatibility)."""
     if _STATE.server is not None:
-        return
+        return _STATE.server
     viser = _lazy_import_viser()
-    _STATE.server = viser.ViserServer(label=app_name)
+    _STATE.server = viser.ViserServer(label=app_name, host=host, port=port)
+    return _STATE.server
+
+
+def reset_scene() -> None:
+    """Clear geometry before loading another saved trial in the inspector."""
+    _get_server().scene.reset()
+    _STATE.body_handles.clear()
+    _STATE.ref_body_handles.clear()
+    _STATE.ref_geom_handles.clear()
+    _STATE.visual_geom_handles.clear()
+    _STATE.collision_geom_handles.clear()
+    _STATE.frame_history.clear()
+    _STATE.trace_history.clear()
+
+
+def update_frame(
+    data: mujoco.MjData,
+    body_handles: list[tuple[Any, int]],
+    data_ref: mujoco.MjData | None = None,
+) -> None:
+    """Display one state without recording an optimization playback history."""
+    with _get_server().atomic():
+        for handle, body_id in body_handles:
+            handle.position = tuple(data.xpos[body_id])
+            handle.wxyz = tuple(data.xquat[body_id])
+        if data_ref is not None:
+            for handle, body_id in _STATE.ref_body_handles:
+                handle.position = tuple(data_ref.xpos[body_id])
+                handle.wxyz = tuple(data_ref.xquat[body_id])
 
 
 def _get_server() -> Any:
@@ -579,6 +613,7 @@ def build_and_log_scene_from_spec(
                     wxyz=geom_quat,
                 )
                 _STATE.ref_geom_handles.append(handle)
+                handle.visible = _STATE.scene_checkboxes["ref"].value
             except Exception as exc:
                 loguru.logger.warning(
                     f"Viser: failed to add ref geom '{geom_name}': {exc}"

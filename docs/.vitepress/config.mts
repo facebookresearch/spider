@@ -15,6 +15,7 @@ const usageSidebar = [
     text: 'Usage',
     items: [
       { text: 'Data Structure', link: '/usage/data-structure' },
+      { text: 'Lifted Datasets', link: '/usage/lifted-datasets' },
       { text: 'Parameter Tuning', link: '/usage/parameter-tuning' },
       { text: 'Viewers', link: '/usage/viewers' },
       { text: 'Deployment', link: '/usage/deployment' },
@@ -39,6 +40,7 @@ const developmentSidebar = [
     items: [
       { text: 'Add a Robot', link: '/development/add-robot' },
       { text: 'Add a Dataset', link: '/development/add-dataset' },
+      { text: 'Dataset Release Plan', link: '/development/dataset-release-plan' },
       { text: 'Add a Simulator', link: '/development/add-simulator' },
     ],
   },

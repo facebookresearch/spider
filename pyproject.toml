@@ -64,6 +64,9 @@ packages = ["spider"]
 dev = [
   "ruff>=0.13.2",
 ]
+release = [
+    "boto3>=1.43.99",
+]
 # OakInk2 toolkit lives outside the resolver; install manually after
 # `uv sync` if you need the oakinkv2 dataset processor:
 #   uv pip install /path/to/OakInk2
