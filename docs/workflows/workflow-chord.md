@@ -89,7 +89,7 @@ counts below are of 60 runs (twenty clips, three seeds) on the CPU unless they s
 | `horizon` | 0.4 s | With a good plan to start from, a longer look ahead buys nothing: 0.4 s tracks as well as 0.6 s and 0.8 s; 0.3 s and shorter lose accuracy. On a stretch planned again after going back it does help (see `recovery`). |
 | Reward | SPIDER's tracking cost; `base_pos_rew_scale` / `base_rot_rew_scale` / `joint_rew_scale` 1.0 / 0.3 / 0.01 | SPIDER's cost does the tracking; CHORD's objective as the planner reward tracked worse in every comparison (4 cm instead of 1 cm). The wrist terms keep the hands near the demonstration: without them they end 3.4 cm away and fewer runs pass. |
 | No object guidance | | A virtual wrench pulling the object to its reference inside planning rollouts helped the soft hands of an earlier recipe. With stiff hands it hurts: 49 runs pass with it. It is no longer an option. |
-| `recovery` | plan a frame again up to twice; go back when the object slips (5 cm or 0.5 rad off for two frames) to 1 s before it was last within 2 cm, and when it is lost; 2 s and 3 s on the next tries at the place; plan the stretch again looking 0.8 s ahead | Searching harder in place is what gets lids opened; going back is what recovers a lost object, which planning on rarely does because the hands follow the demonstration and the sampling noise no longer reaches the object. Without going back 47 runs pass, without the second planning pass 51, without either 36. Going back only once the object was lost (10 cm off for 2 s) returned to a grasp that was already failing; catching the slip while the object is still in hand passes 263 of the 277 ARCTIC sequences instead of 254. Looking 0.8 s ahead on the stretch planned again lets the planner see the failure coming: 267 pass (+8, -4; the ketchup bottle 27 of 28 instead of 24), at 2.1 returns a run. Going back less far loses runs: to 0.05, 0.25 or 0.5 s before the slip 212, 220 and 236 pass; with the longer look ahead, 0.5 s passes 245 and 1 s on every try 251. A fixed 2 s from the slip's first frame passes 266, steps of 0.5 s 264, a fourth try 266. A check at 2 to 4 cm fires on ordinary wobbles and spends the tries before the real slip. |
+| `recovery` | plan a frame again up to twice; go back when the object slips (5 cm or 0.5 rad off for two frames) to 1 s before it was last within 2 cm, and when it is lost; 2 s and 3 s on the next tries at the place; plan the stretch again looking 0.8 s ahead | Searching harder in place is what gets lids opened; going back is what recovers a lost object, which planning on rarely does because the hands follow the demonstration and the sampling noise no longer reaches the object. Without going back 47 runs pass, without the second planning pass 51, without either 36. Going back only once the object was lost (10 cm off for 2 s) returned to a grasp that was already failing; catching the slip while the object is still in hand passes 263 of the 277 ARCTIC sequences instead of 254. Looking 0.8 s ahead on the stretch planned again lets the planner see the failure coming: 267 pass (+8, -4; the ketchup bottle 27 of 28 instead of 24), at 2.1 returns a run; with seed 1, 267 against 257 (+13, -3). Going back less far loses runs: to 0.05, 0.25 or 0.5 s before the slip 212, 220 and 236 pass; with the longer look ahead, 0.5 s passes 245 and 1 s on every try 251. A fixed 2 s from the slip's first frame passes 266, steps of 0.5 s 264, a fourth try 266. A check at 2 to 4 cm fires on ordinary wobbles and spends the tries before the real slip. |
 | Hinge friction (`HINGE_HOLD`) | 1.5 | Dry friction of object hinges, as a multiple of what holds the hinged part against gravity. FlashCHORD gives every hinge 0.1 N m, less than a laptop lid weighs, so the lid swings as soon as the object is tilted. |
 | Kinematic armature (`KINEMATIC_ARMATURE`) | 1e4 | Newton compiles FlashCHORD's kinematic support table with an armature of 1e10, which makes MuJoCo Warp's constraint solver stop after one iteration. This lowers it and recomputes the solver statistic. (The CPU scene fixes the table to the world instead.) |
 | Solver room (`NJMAX` / `NCONMAX`) | 1024 / 512 | FlashCHORD trains with 512 constraint rows, which mesh-heavy objects overflow; rows that do not fit are dropped. |
@@ -150,23 +150,25 @@ opening of the reference is followed at least half of the way, and the run was n
 
 | Simulator | Runs | Pass | Object on its path | Stopped early | Object error | Wrist shake | Time per clip |
 |---|---|---|---|---|---|---|---|
-| CPU, 16 threads (six seeds; going back only once the object is lost) | 120 | 95% | 97% | 3 | 1.2 cm | x1.2 | 5 min |
+| CPU (six seeds) | 120 | 99% | 99% | 1 | 1.0 cm | x1.2 | 9 min, twelve runs sharing 96 cores |
 | GPU, one L40S (three runs per clip; going back only once the object is lost) | 60 | 92% | 93% | 2 | 1.5 cm | x1.3 | 5 min |
 | CPU, all of ARCTIC (277 sequences, seed 0) | 277 | 96% | 97% | 5 | 1.1 cm | x1.4 | 11 min, twelve runs sharing 96 cores |
 | ... looking 0.4 s ahead on the stretch planned again | 277 | 95% | 96% | 9 | 1.2 cm | x1.3 | 13 min, sixteen runs sharing 128 cores |
 | ... going back only once the object is lost | 277 | 92% | 94% | 9 | 1.4 cm | x1.4 | 7 min, ten runs sharing 128 cores |
 
-The last three rows are every ARCTIC sequence that has an object model: nine subjects, ten objects, 221 `use` and
-56 `grab` sequences of 18 to 37 s (the 24 scissors sequences have none). With the defaults 267 pass; of the 10 that
-do not, five stop with the object lost, four finish with the object off its path and one misses an opening of the
-hinge. By object: box 25 of 25, microwave 27 of 27, mixer 29 of 29, laptop 28 of 29, waffle iron 29 of 30, espresso
-machine 27 of 28, ketchup bottle 27 of 28, notebook 24 of 25, capsule machine 25 of 27, phone 26 of 29. The scenes
-are the [example dataset](workflow-cpu.md#prerequisites)'s `processed/chord`; its runs are those of the defaults.
+The last three rows are every ARCTIC sequence that has an object model: nine subjects, ten objects, 221 `use` and 56
+`grab` sequences of 18 to 37 s (the 24 scissors sequences have none). With the defaults 267 pass; of the 10 that do
+not, five stop with the object lost, four finish with the object off its path and one misses an opening of the
+hinge. With seed 1, 267 pass as well (257 looking 0.4 s ahead: +13, -3). By object (seed 0): box 25 of 25, microwave
+27 of 27, mixer 29 of 29, laptop 28 of 29, waffle iron 29 of 30, espresso machine 27 of 28, ketchup bottle 27 of 28,
+notebook 24 of 25, capsule machine 25 of 27, phone 26 of 29. The scenes are the [example
+dataset](workflow-cpu.md#prerequisites)'s `processed/chord`; its runs are those of the defaults.
 
-On the CPU seventeen clips pass in all six runs. The others are the ketchup bottle (take 1 passes five runs of six,
-take 2 three) and the espresso machine's first take (four of six: the machine stays on its path, but its lever is
-more than 10 degrees off on average). On the GPU five runs of sixty fail: the ketchup bottle's second take twice,
-and one run each of the box's first take, the capsule machine's second and the espresso machine's first.
+On the CPU every clip passes in all six runs but the phone's first take, which loses the phone once (seed 4). With
+the earlier rule (going back only once the object is lost) 114 of 120 passed: the ketchup bottle failed four runs of
+twelve and the espresso machine's first take two of six. On the GPU, with that rule, five runs of sixty fail: the
+ketchup bottle's second take twice, and one run each of the box's first take, the capsule machine's second and the
+espresso machine's first.
 
 Things to know when reading results:
 
