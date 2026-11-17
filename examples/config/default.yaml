@@ -73,7 +73,7 @@ gibbs_sampling: false
 
 # === VISUALIZATION CONFIGURATION ===
 show_viewer: true
-viewer: mujoco-rerun # "mujoco" | "rerun" | "viser" | "isaac"
+viewer: viser # "mujoco" | "rerun" | "viser" | "isaac"
 rerun_spawn: true
 save_video: true
 save_rerun: false

@@ -11,6 +11,7 @@ This mirrors the Rerun viewer APIs so it can be used as a drop-in replacement.
 
 from __future__ import annotations
 
+import os
 import threading
 import time
 from collections.abc import Callable
@@ -260,14 +261,23 @@ def _ensure_names(spec: mujoco.MjSpec) -> None:
 def init_viser(
     app_name: str = "spider",
     spawn: bool | None = None,
-    host: str = "0.0.0.0",
-    port: int = 8080,
+    host: str | None = None,
+    port: int | None = None,
 ) -> Any:
-    """Initialize Viser server (spawn unused, kept for drop-in compatibility)."""
+    """Initialize Viser server (spawn unused, kept for drop-in compatibility).
+
+    The server has no authentication, so it listens on this machine only
+    unless told otherwise: ``host`` defaults to ``$SPIDER_VISER_HOST`` or
+    ``127.0.0.1``, ``port`` to ``$SPIDER_VISER_PORT`` or 8080. To watch a run
+    on another machine, forward the port (``ssh -L 8080:127.0.0.1:8080 HOST``).
+    """
     if _STATE.server is not None:
         return _STATE.server
+    host = host or os.environ.get("SPIDER_VISER_HOST", "127.0.0.1")
+    port = port or int(os.environ.get("SPIDER_VISER_PORT", "8080"))
     viser = _lazy_import_viser()
     _STATE.server = viser.ViserServer(label=app_name, host=host, port=port)
+    loguru.logger.info("Viser viewer at http://{}:{}", host, port)
     return _STATE.server
 
 
@@ -281,6 +291,29 @@ def reset_scene() -> None:
     _STATE.collision_geom_handles.clear()
     _STATE.frame_history.clear()
     _STATE.trace_history.clear()
+    _STATE.trace_handles.clear()
+    _STATE.last_traces = _STATE.last_trace_ref = None
+    _STATE._active_trace_id = -1
+    if _STATE.playback_slider is not None:
+        _STATE.playback_slider.value = 0
+
+
+def rewind(num_frames: int) -> None:
+    """Keep the first ``num_frames`` logged frames: the run went back to there.
+
+    The frames after them and the traces logged with them leave the timeline,
+    so that it holds the motion that is kept, and the scene shows its last frame.
+    """
+    del _STATE.frame_history[num_frames:]
+    for frame in [f for f in _STATE.trace_history if f >= num_frames]:
+        del _STATE.trace_history[frame]
+    slider = _STATE.playback_slider
+    if slider is None:
+        return
+    last = max(len(_STATE.frame_history) - 1, 0)
+    if int(slider.value) > last:
+        slider.value = last  # the slider's callback draws the frame
+    slider.max = max(1, last)
 
 
 def update_frame(
@@ -419,6 +452,7 @@ def build_and_log_scene_from_spec(
 
             if geom.type == mujoco.mjtGeom.mjGEOM_MESH:
                 tm = None
+                compiled_mesh = False
                 mesh_file = _get_mesh_file(spec, geom)
                 mesh_scale = _get_mesh_scale(spec, geom)
                 if mesh_file is not None and mesh_file.exists():
@@ -429,9 +463,12 @@ def build_and_log_scene_from_spec(
                     except Exception:
                         tm = None
                 if tm is None:
+                    # No mesh file (vertices inline in the MJCF): the compiled mesh,
+                    # which is already scaled and lives in the compiled geom frame.
                     try:
                         geom_id = model_geom.id if model_geom is not None else -1
                         tm = _mujoco_mesh_to_trimesh(model, geom_id)
+                        compiled_mesh = tm is not None
                     except Exception:
                         tm = None
                 if tm is None:
@@ -439,7 +476,7 @@ def build_and_log_scene_from_spec(
                         f"Viser: failed to load mesh for geom '{geom_name}'"
                     )
                     continue
-                if mesh_scale is not None:
+                if mesh_scale is not None and not compiled_mesh:
                     try:
                         tm.apply_scale(mesh_scale)
                     except Exception:
@@ -461,11 +498,13 @@ def build_and_log_scene_from_spec(
                 continue
 
             # For primitive (non-mesh) geoms, use compiled model transforms
-            # which correctly resolve fromto-specified capsules. For mesh geoms,
-            # keep the spec transforms since the STL vertices are in the original
-            # frame (the compiler re-centers mesh vertices at their COM which
-            # doesn't match the file we loaded).
-            if geom.type != mujoco.mjtGeom.mjGEOM_MESH and model_geom is not None:
+            # which correctly resolve fromto-specified capsules. For mesh geoms
+            # loaded from a file, keep the spec transforms since the file's
+            # vertices are in the original frame (the compiler re-centers mesh
+            # vertices at their COM). A mesh taken from the compiled model has
+            # the re-centered vertices, so it needs the compiled transforms too.
+            is_mesh = geom.type == mujoco.mjtGeom.mjGEOM_MESH
+            if (not is_mesh or compiled_mesh) and model_geom is not None:
                 geom_pos = np.asarray(model.geom_pos[model_geom.id], dtype=np.float32)
                 geom_quat = np.asarray(model.geom_quat[model_geom.id], dtype=np.float32)
             else:
@@ -535,6 +574,10 @@ def build_and_log_scene_from_spec(
 
         ref_body_entity_and_ids.append((body_handle, body_id))
 
+        # A body fixed to the world never leaves its reference pose: no ghost on it.
+        if model.body_weldid[body_id] == 0:
+            continue
+
         for geom in body.geoms:
             geom_name = geom.name
 
@@ -559,6 +602,7 @@ def build_and_log_scene_from_spec(
 
             if geom.type == mujoco.mjtGeom.mjGEOM_MESH:
                 tm = None
+                compiled_mesh = False
                 mesh_file = _get_mesh_file(spec, geom)
                 mesh_scale = _get_mesh_scale(spec, geom)
                 if mesh_file is not None and mesh_file.exists():
@@ -569,14 +613,17 @@ def build_and_log_scene_from_spec(
                     except Exception:
                         tm = None
                 if tm is None:
+                    # No mesh file (vertices inline in the MJCF): the compiled mesh,
+                    # which is already scaled and lives in the compiled geom frame.
                     try:
                         geom_id = model_geom.id if model_geom is not None else -1
                         tm = _mujoco_mesh_to_trimesh(model, geom_id)
+                        compiled_mesh = tm is not None
                     except Exception:
                         tm = None
                 if tm is None:
                     continue
-                if mesh_scale is not None:
+                if mesh_scale is not None and not compiled_mesh:
                     try:
                         tm.apply_scale(mesh_scale)
                     except Exception:
@@ -598,7 +645,8 @@ def build_and_log_scene_from_spec(
             if tm is None:
                 continue
 
-            if geom.type != mujoco.mjtGeom.mjGEOM_MESH and model_geom is not None:
+            is_mesh = geom.type == mujoco.mjtGeom.mjGEOM_MESH
+            if (not is_mesh or compiled_mesh) and model_geom is not None:
                 geom_pos = np.asarray(model.geom_pos[model_geom.id], dtype=np.float32)
                 geom_quat = np.asarray(model.geom_quat[model_geom.id], dtype=np.float32)
             else:
@@ -748,9 +796,17 @@ def log_frame(
             _STATE.playback_thread = threading.Thread(target=playback_loop, daemon=True)
             _STATE.playback_thread.start()
 
-    # Update slider max bound
+    # Update slider max bound. While the slider is on the newest frame it follows
+    # the run, so the scene shows the motion as it is optimized; moving the slider
+    # back in time stops that, moving it to the end resumes it.
     if _STATE.playback_slider is not None:
-        _STATE.playback_slider.max = max(1, current_frame)
+        slider = _STATE.playback_slider
+        following = int(slider.value) >= current_frame - 1
+        slider.max = max(1, current_frame)
+        if following and int(slider.value) != current_frame:
+            slider.value = current_frame  # the slider's callback draws the frame
+        elif following:
+            _render_frame()
 
 
 def _render_frame(

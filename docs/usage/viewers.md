@@ -12,7 +12,12 @@ SPIDER supports the following viewer configurations:
 | `rerun` | Rerun.io viewer | Remote development, rich logging |
 | `viser` | Viser web viewer | Lightweight remote visualization |
 
-To enable both, try `mujoco-rerun` or `mujoco-viser` viewer.
+To enable both, try `mujoco-rerun` or `mujoco-viser` viewer. The default is `viser`.
+
+The Viser server of a retargeting run has no login, so it listens on the machine it runs on only
+(`http://localhost:8080`). To watch a run on another machine, forward the port
+(`ssh -L 8080:127.0.0.1:8080 HOST`), or set `SPIDER_VISER_HOST=0.0.0.0` on a network you trust;
+`SPIDER_VISER_PORT` changes the port.
 
 ## Viser Viewer
 
@@ -39,6 +44,11 @@ This will:
 1. Start a Viser server
 2. Log simulation data in real-time
 3. Print a URL to open in your browser
+
+The scene follows the run while the timeline's frame slider is at its end, with the reference as a translucent
+ghost and the sampled traces of the latest plan; move the slider back to look at an earlier frame. The CPU
+workflow adds a panel that picks the task and the settings and starts runs
+([details](../workflows/workflow-cpu.md#watching-a-run)).
 
 ::: warning
 If you run headless (no X display), you may need to set a display before launching:

@@ -1,3 +1,4 @@
+simulator: mjwp
 dataset_dir: ../../example_datasets
 dataset_name: oakink
 robot_type: allegro

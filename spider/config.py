@@ -53,7 +53,7 @@ class Config:
     load_config_path: str = ""
 
     # === SIMULATOR CONFIGURATION ===
-    simulator: str = "mjwp"  # "isaac" | "mujoco" | "mjwp" | "mjwp_cons" | "mjwp_eq" | "mjwp_cons_eq" | "kinematic"
+    simulator: str = "cpu"  # "cpu" | "mjwp" | "mjwp_cons" | "mjwp_eq" | "mjwp_cons_eq" | "isaac" | "mujoco" | "kinematic" | "chord" | ...
     device: str = "cuda:0"
     # Simulation timing
     sim_dt: float = 0.01  # simulation timestep
@@ -150,7 +150,7 @@ class Config:
 
     # === VISUALIZATION CONFIGURATION ===
     show_viewer: bool = True
-    viewer: str = "mujoco"  # "mujoco" | "rerun" | "viser" | "isaac"
+    viewer: str = "viser"  # "mujoco" | "rerun" | "viser" | "isaac"
     wait_on_finish: bool = True  # block after optimization to keep viewer alive
     rerun_spawn: bool = False
     save_video: bool = True
@@ -379,7 +379,8 @@ def get_noise_scale(config: Config) -> torch.Tensor:
     noise_scale[0] *= 0.0
     # set last few samples to exploit_noise_scale
     num_exploit_samples = int(config.num_samples * config.exploit_ratio)
-    noise_scale[-num_exploit_samples:] *= config.exploit_noise_scale
+    if num_exploit_samples > 0:  # [-0:] would be every sample
+        noise_scale[-num_exploit_samples:] *= config.exploit_noise_scale
     return noise_scale
 
 

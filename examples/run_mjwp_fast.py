@@ -792,7 +792,7 @@ def main(config: Config):
         except Exception as e:
             loguru.logger.warning(f"Failed to save viser scene: {e}")
 
-    if "viser" in config.viewer and config.wait_on_finish:
+    if config.show_viewer and "viser" in config.viewer and config.wait_on_finish:
         loguru.logger.info(
             "Optimization complete! Keeping Viser server alive. Press Ctrl+C to exit."
         )

@@ -1,0 +1,120 @@
+# SPIDER's CPU workflow (examples/run_cpu.py): sampling MPC on MuJoCo's CPU
+# batch API. One recipe for every clip; docs/workflows/workflow-cpu.md gives the
+# reasons. examples/config/chord.yaml (FlashCHORD on the GPU) starts from this.
+defaults:
+  - _self_
+
+# === TASK ===
+simulator: cpu
+device: cpu
+# The scene: scene.xml and scene.npz in
+# {dataset_dir}/processed/{dataset_name}/{robot_type}/{embodiment_type}/{task}/{data_id}/
+# (model_path=DIR/scene.xml points elsewhere). Results go to output_dir, by
+# default the same directory.
+dataset_dir: example_datasets
+dataset_name: chord
+robot_type: sharpa
+embodiment_type: bimanual
+task: s01-box-use # ARCTIC: <subject>-<object>-<use|grab>, data_id = take
+data_id: 1
+model_path: ""
+data_path: ""
+output_dir: ""
+seed: 0
+# Threads of MuJoCo's batch (0: one per core). Read by run_cpu.py; not a field
+# of spider.config.Config.
+num_threads: 0
+
+# === REWARD: SPIDER's tracking cost ===
+base_pos_rew_scale: 1.0
+base_rot_rew_scale: 0.3
+joint_rew_scale: 0.01
+pos_rew_scale: 1.0
+rot_rew_scale: 0.3 # object rotation and object hinges
+vel_rew_scale: 0.0001
+terminal_rew_scale: 1.0
+
+# === TIMING ===
+# One simulation step is one control frame of the scene (0.05 s). Replanning
+# at every frame with a few iterations tracks better than replanning less
+# often with more, for the same rollout physics.
+sim_dt: 0.05 # overwritten from the scene
+ctrl_dt: 0.05
+knot_dt: 0.2
+horizon: 0.4
+max_sim_steps: -1 # -1: the whole reference
+num_dr: 1
+
+# === OPTIMIZER ===
+# The planning time is proportional to num_samples x max_num_iterations.
+# max_num_iterations=2 halves it and loses a few runs in a hundred.
+num_samples: 128
+max_num_iterations: 4
+temperature: 0.3
+improvement_threshold: -1.0 # every iteration runs
+improvement_check_steps: 1
+first_ctrl_noise_scale: 0.5
+last_ctrl_noise_scale: 1.0
+final_noise_scale: 1.0 # no annealing over the iterations
+exploit_ratio: 0.01
+exploit_noise_scale: 0.01
+# Residual noise per knot: wrist position [m], wrist rotation [rad], fingers [rad].
+pos_noise_scale: 0.01
+rot_noise_scale: 0.01
+joint_noise_scale: 0.10
+terminate_resample: false
+use_torch_compile: false
+
+# === RECOVERY ===
+# When to plan a tick again and when to go back and plan a stretch again; see
+# Recovery in run_cpu.py (which reads this section; it is not part of
+# spider.config.Config). max_backtracks: 0 never goes back.
+recovery:
+  retry_tolerance: 0.04
+  retry_rot_tolerance: 0.35
+  max_retries: 2
+  retry_noise_gain: 1.5
+  # Slipping: the object off by back_tolerance [m] (or its worst body turned by
+  # back_rot_tolerance [rad], 0: not checked) for back_frames frames, while it is
+  # still in hand: go back to before it was last within calm_tolerance [m] (0: the
+  # slip's first frame). back_tolerance: 0 turns this off.
+  back_tolerance: 0.05
+  back_rot_tolerance: 0.5
+  back_frames: 2
+  calm_tolerance: 0.02
+  # Where to: backtrack_seconds before the failure began, backtrack_growth [s]
+  # further on each further try at a place, up to max_backtracks tries (per slip,
+  # per loss, per missed lid). The stretch planned again gets back_noise_gain x the
+  # noise per try, a horizon of back_horizon [s] and back_iterations iterations per
+  # frame (0: as the run).
+  backtrack_seconds: 1.0
+  backtrack_growth: 1.0
+  max_backtracks: 3
+  back_noise_gain: 1.0
+  back_horizon: 0.8
+  back_iterations: 0
+  # Lost: off by stop_tolerance [m] (or turned by stop_rot_tolerance [rad]) for
+  # stop_frames frames: go back too; with no tries left at that place, stop.
+  stop_tolerance: 0.10
+  stop_rot_tolerance: 0.5
+  stop_frames: 40
+
+# === VIEWER AND OUTPUT ===
+# The Viser viewer shows the motion as it is optimised, the reference, and the
+# sampled and planned paths of the object and the wrists over the horizon. Its
+# panel picks the task and the key settings, starts and stops runs, plots metrics.
+show_viewer: true
+viewer: viser # "viser" | "rerun" | "mujoco" | "none"
+autostart: false # with Viser: start the configured task without waiting for Start
+wait_on_finish: true # keep the Viser server up after a run, until Ctrl+C
+save_video: true # visualization_<simulator>.mp4, the reference overlaid in green
+save_info: true # trajectory_<simulator>.npz and metrics.json
+num_trace_uniform_samples: 4
+num_trace_topk_samples: 2
+
+hydra:
+  output_subdir: null
+  job:
+    chdir: false
+  run:
+    dir: .

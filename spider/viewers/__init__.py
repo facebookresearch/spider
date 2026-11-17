@@ -105,6 +105,11 @@ def setup_viewer(config: Config, mj_model: mujoco.MjModel, mj_data: mujoco.MjDat
                 _, _, config.viewer_body_entity_and_ids = (
                     viser_viewer.build_and_log_scene(Path(config.model_path))
                 )
+                if mj_data is not None:  # the starting pose, until frames are logged
+                    mujoco.mj_kinematics(mj_model, mj_data)
+                    viser_viewer.update_frame(
+                        mj_data, config.viewer_body_entity_and_ids, data_ref=mj_data
+                    )
                 loguru.logger.info(
                     "viewer is set to viser, build and log scene from xml file"
                 )
@@ -259,50 +264,78 @@ def setup_renderer(config: Config, mj_model: mujoco.MjModel):
     return renderer
 
 
+# Colour of the reference motion drawn over the simulated one.
+REFERENCE_RGBA = (0.10, 0.85, 0.35, 0.32)
+
+
 def render_image(
     config: Config,
     renderer: mujoco.Renderer,
     mj_model: mujoco.MjModel,
     mj_data: mujoco.MjData,
     mj_data_ref: mujoco.MjData,
+    camera: mujoco.MjvCamera | str | int | None = None,
 ):
+    """Render the simulated state with the reference drawn over it as a green ghost.
+
+    Args:
+        config: Unused; kept for the callers' common signature.
+        renderer: Offscreen renderer of ``mj_model``.
+        mj_model: The scene.
+        mj_data: The simulated state (solid).
+        mj_data_ref: The reference state (translucent green).
+        camera: Camera to render from. None uses the model's ``front`` camera,
+            its first camera, or a free camera on the whole scene.
+
+    Returns:
+        The image, (height, width, 3) uint8.
+    """
+    del config
     options = mujoco.MjvOption()
     mujoco.mjv_defaultOption(options)
     options.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = True
+    if camera is None:
+        front = mujoco.mj_name2id(mj_model, mujoco.mjtObj.mjOBJ_CAMERA, "front")
+        if front >= 0 or mj_model.ncam > 0:
+            camera = max(front, 0)
+        else:
+            camera = mujoco.MjvCamera()
+            mujoco.mjv_defaultFreeCamera(mj_model, camera)
 
-    # render sim
     mujoco.mj_forward(mj_model, mj_data)
-    try:
-        renderer.update_scene(mj_data, "front", options)
-    except Exception:
-        renderer.update_scene(mj_data, 0, options)
-    sim_image = renderer.render()
-    # add text named "sim"
-    cv2.putText(
-        sim_image,
-        "sim",
-        (10, 30),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1,
-        (128, 128, 128),
-        2,
-    )
-    # render ref
     mujoco.mj_forward(mj_model, mj_data_ref)
-    try:
-        renderer.update_scene(mj_data_ref, "front")
-    except Exception:
-        renderer.update_scene(mj_data_ref, 0)
-    ref_image = renderer.render()
-    # add text named "ref"
-    cv2.putText(
-        ref_image,
-        "ref",
-        (10, 30),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1,
-        (128, 128, 128),
-        2,
+    renderer.update_scene(mj_data, camera, options)
+    scene = renderer.scene
+    first = scene.ngeom
+    mujoco.mjv_addGeoms(
+        mj_model,
+        mj_data_ref,
+        mujoco.MjvOption(),
+        mujoco.MjvPerturb(),
+        int(mujoco.mjtCatBit.mjCAT_DYNAMIC),
+        scene,
     )
-    image = np.concatenate([ref_image, sim_image], axis=1)
+    for g in range(first, scene.ngeom):
+        geom = scene.geoms[g]
+        rgba = REFERENCE_RGBA
+        if (
+            geom.objtype == mujoco.mjtObj.mjOBJ_GEOM
+            and 0 <= geom.objid < mj_model.ngeom
+        ):
+            body = mj_model.geom_bodyid[geom.objid]
+            # A body exactly where the reference has it (a fixture) needs no ghost.
+            if np.array_equal(mj_data.xpos[body], mj_data_ref.xpos[body]) and (
+                np.array_equal(mj_data.xquat[body], mj_data_ref.xquat[body])
+            ):
+                rgba = (0.0, 0.0, 0.0, 0.0)
+        geom.rgba[:] = rgba
+    image = renderer.render()
+    # White on a black box: readable on a light floor and on a dark background.
+    text, font = "solid: sim   green: ref", cv2.FONT_HERSHEY_SIMPLEX
+    x, y = 10, image.shape[0] - 12
+    (width, height), baseline = cv2.getTextSize(text, font, 0.5, 1)
+    cv2.rectangle(
+        image, (x - 5, y - height - 5), (x + width + 5, y + baseline + 3), (0, 0, 0), -1
+    )
+    cv2.putText(image, text, (x, y), font, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
     return image

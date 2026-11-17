@@ -27,9 +27,11 @@ const workflowsSidebar = [
   {
     text: 'Workflows',
     items: [
+      { text: 'CPU (MuJoCo batch)', link: '/workflows/workflow-cpu' },
       { text: 'MuJoCo Warp (MJWP)', link: '/workflows/workflow-mjwp' },
       { text: 'HDMI', link: '/workflows/workflow-hdmi' },
       { text: 'DexMachina', link: '/workflows/workflow-dexmachina' },
+      { text: 'FlashCHORD (GPU)', link: '/workflows/workflow-chord' },
     ],
   },
 ];

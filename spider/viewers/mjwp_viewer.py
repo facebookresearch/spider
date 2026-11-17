@@ -46,6 +46,7 @@ def main(
     ref_dt: float = 0.02,
 ):
     config = Config(
+        simulator="mjwp",
         robot_type=robot_type,
         task=task,
         dataset_name=dataset_name,

@@ -37,6 +37,41 @@ uv run examples/run_mjwp.py +override=gigahand task=p36-tea data_id=0 robot_type
 uv run examples/run_mjwp.py viewer="rerun"
 ```
 
+### Running Retargeting on the CPU (default workflow, `simulator=cpu`)
+`spider/simulators/cpu.py` has MJWP's simulator interface on MuJoCo's CPU batch API; `examples/run_cpu.py` follows
+`run_mjwp.py`'s protocol. Writes `trajectory_cpu.npz`, `metrics.json` and `visualization_cpu.mp4`.
+```bash
+# Needs MuJoCo >= 3.17, which SPIDER's own environment does not have: use the small environment of
+# docs/workflows/workflow-cpu.md. Scene: example_datasets/processed/chord/sharpa/bimanual/<task>/<data_id>/
+# {scene.xml,scene.npz} (ARCTIC scenes in the example dataset: task = <subject>-<object>-<use|grab>,
+# data_id = take; default s01-box-use/1)
+python examples/run_cpu.py                                       # Viser at http://localhost:8080: pick a task, press Start
+python examples/run_cpu.py task=s01-laptop-use data_id=2 autostart=true   # start that clip at once, with the viewer
+python examples/run_cpu.py show_viewer=false num_threads=16      # headless; about 9 s of planning per second of motion
+
+# Score a saved run again
+python -m spider.postprocess.evaluate_cpu OUT
+
+# Tests
+pytest spider/simulators/cpu_test.py spider/postprocess/evaluate_cpu_test.py spider/viewers/viser_viewer_test.py \
+    spider/simulators/chord_export_test.py
+```
+The recipe (128 samples, 4 iterations per control frame, going back when the object slips) is in
+`examples/config/cpu.yaml`; the reasons are in `docs/workflows/workflow-chord.md`.
+
+### Running Retargeting in FlashCHORD's GPU environment
+`examples/run_chord.py`: the GPU twin of `run_cpu.py` (same loop, recovery and viewer) on `spider/simulators/chord.py`;
+`examples/config/chord.yaml` starts from `cpu.yaml`. Writes `trajectory_chord.npz`, `metrics.json`, `visualization_chord.mp4`.
+```bash
+# Needs flash_chord (SPIDER installed into its environment with --no-deps). With the viewer a run waits for
+# Start in the browser: add autostart=true, or show_viewer=false for batch runs.
+python examples/run_chord.py "data_path='REFERENCE_DIR'" output_dir=OUT
+# export a scene for the CPU workflow
+python -m spider.simulators.chord_export --parquet REFERENCE_DIR --out example_datasets/processed/chord/sharpa/bimanual/TASK/ID
+CHORD_TEST_PARQUET=REFERENCE_DIR pytest spider/simulators/chord_test.py
+```
+The gains and solver sizes of the recipe are constants at the top of `spider/simulators/chord.py`.
+
 ### Full Pipeline (preprocess → retarget → postprocess)
 ```bash
 uv run spider/process_datasets/gigahand.py --task=TASK --embodiment-type=TYPE --data-id=ID
@@ -69,6 +104,8 @@ uv run examples/run_mjwp.py +override=NAME task=TASK data_id=ID robot_type=ROBOT
 - **DexMachina** (`dexmachina.py`) — Genesis simulator for RL training
 - **HDMI** (`hdmi.py`) — humanoid RL workflow
 - **Isaac** (`isaac.py`) — NVIDIA Isaac integration
+- **CPU** (`cpu.py`) — the default (`simulator=cpu`): MJWP's interface on MuJoCo's CPU batch API in double precision; self-contained (MuJoCo >= 3.17); runner `examples/run_cpu.py`
+- **CHORD** (`chord.py`, `chord_export.py`) — sampling MPC directly on FlashCHORD's GPU environment (its physics and control law; needs `flash_chord`), and the export of its scene for the CPU workflow; runner `examples/run_chord.py`
 
 ### Optimizer (`spider/optimizers/sampling.py`)
 Sampling-based MPC using cross-entropy method. Key functions: `make_rollout_fn`, `make_optimize_fn`, `make_optimize_once_fn`. Supports `torch.compile` for speedup, noise scheduling with temperature annealing, and contact guidance.

@@ -1,0 +1,13 @@
+# SPIDER's sampling MPC in FlashCHORD's own environment on the GPU
+# (examples/run_chord.py): the settings of the CPU workflow (cpu.yaml), on
+# FlashCHORD's physics and control law. Needs flash_chord and a GPU.
+defaults:
+  - cpu
+  - _self_
+
+simulator: chord
+device: cuda:0
+# The FlashCHORD reference: a robot_name=... directory with the retargeted
+# parquet (quote it on the command line: "data_path='DIR'"). Results go to
+# output_dir, by default the dataset layout's trial directory.
+data_path: ""

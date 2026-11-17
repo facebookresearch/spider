@@ -230,7 +230,9 @@ def _compute_weights_impl(
     # Initialize weights as zeros and compute softmax only for top samples
     weights = torch.zeros_like(rews)
     top_rews = rews[top_indices]
-    top_rews_normalized = (top_rews - top_rews.mean()) / (top_rews.std() + 1e-2)
+    # A single elite (fewer than 20 samples) has no spread: its std would be NaN.
+    top_std = top_rews.std() if top_k > 1 else 0.0
+    top_rews_normalized = (top_rews - top_rews.mean()) / (top_std + 1e-2)
     top_weights = F.softmax(top_rews_normalized / temperature, dim=0)
     weights[top_indices] = top_weights
 

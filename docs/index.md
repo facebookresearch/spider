@@ -30,7 +30,7 @@ features:
 
   - icon: 📊
     title: Rich Datasets, Robots and Simulators
-    details: Works with 6+ datasets out of the box including GigaHand, Hot3D, OakInk, and more. Supports 9+ robot embodiments including dexterous hands (Allegro, Inspire, Xhand) and humanoid robots (G1, H1, T1). Supports multiple simulators including MuJoCo Warp, Genesis, and HDMI.
+    details: Works with 6+ datasets out of the box including GigaHand, Hot3D, OakInk, and more. Supports 9+ robot embodiments including dexterous hands (Allegro, Inspire, Xhand) and humanoid robots (G1, H1, T1). Supports multiple simulators including MuJoCo on the CPU, MuJoCo Warp, Genesis, HDMI, and FlashCHORD.
 
   - icon: 🔄
     title: Sim2Real Ready
@@ -39,6 +39,7 @@ features:
 
 ## News
 
+- **2026-11-17:** New [CPU workflow](./workflows/workflow-cpu.md), now the default (`simulator=cpu`): SPIDER's sampling MPC on MuJoCo's CPU batch API, no GPU needed. It retargets **267 of 277 ARCTIC sequences** onto two Sharpa hands, goes back and plans again when the object slips, and shows the motion being optimized and its planned traces in Viser. The scenes and runs are in the example dataset (`processed/chord`); the [FlashCHORD workflow](./workflows/workflow-chord.md) runs the same loop on GPU.
 - **2026-09-22:** [SPIDER retarget_full is released](https://huggingface.co/datasets/retarget/retarget_full): **7,876 successful trajectories** from 2,885 source episodes, covering DexYCB, HOT3D v2, HRDexDB, and OakInk with Allegro, Xhand, Inspire, and Sharpa. [Download and inspect with Viser](./usage/lifted-datasets.md).
 
 The downloader and Viser inspector are included in SPIDER; see the
@@ -57,3 +58,5 @@ pip install --ignore-requires-python --no-deps -e .
 # Run retargeting
 uv run examples/run_mjwp.py
 ```
+
+Without a GPU, the [CPU workflow](./workflows/workflow-cpu.md) runs the demo on the CPU.

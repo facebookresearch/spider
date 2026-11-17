@@ -34,6 +34,7 @@
 
 ## News
 
+- **2026-11-17:** New [CPU workflow](docs/workflows/workflow-cpu.md), now the default (`simulator=cpu`): SPIDER's sampling MPC on MuJoCo's CPU batch API, no GPU needed. It retargets **267 of 277 [ARCTIC](https://arctic.is.tue.mpg.de) sequences** onto two Sharpa hands, goes back and plans again when the object slips, and shows the motion being optimized and its planned traces in Viser. The scenes and runs are in the [example dataset](https://huggingface.co/datasets/retarget/retarget_example) (`processed/chord`); a [FlashCHORD GPU twin](docs/workflows/workflow-chord.md) runs the same loop on NVIDIA's FlashCHORD environment. [Try it](#cpu-workflow).
 - **2026-09-22:** Released [SPIDER retarget_full](https://huggingface.co/datasets/retarget/retarget_full): **7,876 successful trajectories** from 2,885 source episodes across four datasets and four robot hands. [Download and inspect with Viser](#released-dataset).
 
 ## Overview
@@ -83,7 +84,7 @@ This code base provides the following pipeline from human video to robot actions
 - First general **physics-based** retargeting pipeline for both dexterous hand and humanoid robot.
 - Supports 9+ robots and 6+ datasets out of the box.
 - Seemless integration with RL training and data augmentation for BC pipeline.
-- Native support for multiple simulators (Mujoco Wrap, Genesis) and multiple downstream training pipelines (HDMI, DexMachina).
+- Native support for multiple simulators (MuJoCo on the CPU, Mujoco Wrap, Genesis, FlashCHORD) and multiple downstream training pipelines (HDMI, DexMachina).
 - Sim2real ready.
 
 ![](figs/embodiment_support.png)
@@ -97,6 +98,8 @@ sudo apt install git-lfs
 git lfs install
 git clone https://huggingface.co/datasets/retarget/retarget_example example_datasets
 ```
+
+No GPU? The [CPU workflow](#cpu-workflow) runs the demo on the CPU.
 
 ### (Option 1) Quickstart with uv:
 
@@ -183,10 +186,57 @@ Verification covers saved-state replay; it does not establish control-replay dyn
 ## Workflow
 
 SPIDER is designed to support multiple workflows depending on your simulator of choice and downstream tasks.
-- Native Mujoco Wrap (MJWP) is the default workflow and supports dexterous hand and humanoid robot retargeting.
+- The CPU workflow is the default (`simulator=cpu`): MuJoCo's CPU batch API, no GPU, two Sharpa hands on ARCTIC scenes.
+- Native Mujoco Wrap (MJWP) is the GPU workflow and supports dexterous hand and humanoid robot retargeting.
+- The [FlashCHORD](https://nvidia-isaac.github.io/video_to_data/) workflow is the GPU twin of the CPU workflow on FlashCHORD's environment.
 - We also support [Genesis](https://genesis.github.io/) simulator with [DexMachina](https://github.com/MandiZhao/dexmachina), workflow is useful for further training a policy with RL for dexterous hand.
 - [HDMI](https://github.com/lecar-lab/hdmi) workflow supports humanoid robot retargeting + RL workflow with humanoid-object interaction tasks. It use [MjLab](https://github.com/mujocolab/mjlab) as its backend simulator.
 - [ManipTrans](https://github.com/ManipTrans/ManipTrans) workflow supports dexterous hand retargeting with IsaacGym.
+
+### CPU Workflow
+
+Please refer to [CPU workflow](docs/workflows/workflow-cpu.md) for details.
+
+- SPIDER's sampling MPC on MuJoCo's CPU batch API (`mujoco.batch`): no GPU and no external library
+- the same simulator interface as MJWP (`spider/simulators/cpu.py`), runner `examples/run_cpu.py`, recipe `examples/config/cpu.yaml`
+- goes back and plans again when the object slips; the Viser viewer shows the motion being optimized and the planned traces
+
+It needs MuJoCo 3.17 or later, and SPIDER's own environment pins MuJoCo 3.7 for MuJoCo Warp, so it gets a small
+environment of its own. The scenes of 277 ARCTIC sequences are in the example dataset
+(`example_datasets/processed/chord/sharpa/bimanual/<subject>-<object>-<use|grab>/<take>/`).
+
+```bash
+uv venv --python 3.12 .venv-cpu
+uv pip install --python .venv-cpu/bin/python "mujoco>=3.17" torch numpy scipy loguru hydra-core tyro \
+    opencv-python-headless "imageio[ffmpeg]" "rerun-sdk==0.26.2" viser trimesh
+uv pip install --python .venv-cpu/bin/python --no-deps -e .
+
+# open the viewer at http://localhost:8080, pick a task, press Start
+.venv-cpu/bin/python examples/run_cpu.py
+# start one clip at once (ARCTIC s01/laptop_use_02), still with the viewer
+.venv-cpu/bin/python examples/run_cpu.py task=s01-laptop-use data_id=2 autostart=true
+# headless, on 16 threads
+.venv-cpu/bin/python examples/run_cpu.py show_viewer=false num_threads=16
+```
+
+A run writes `trajectory_cpu.npz`, `metrics.json` and `visualization_cpu.mp4` (the motion with the reference in
+green) into the scene's directory, or into `output_dir`.
+
+### FlashCHORD (GPU) Workflow
+
+Please refer to [FlashCHORD workflow](docs/workflows/workflow-chord.md) for details.
+
+- the GPU twin of the CPU workflow: the same loop, recovery and viewer on the environment of [FlashCHORD](https://nvidia-isaac.github.io/video_to_data/) (its physics and control law)
+- exports FlashCHORD scenes for the CPU workflow
+
+```bash
+# in FlashCHORD's environment, with SPIDER installed into it without its dependencies
+pip install --no-deps -e .
+python examples/run_chord.py "data_path='REFERENCE_DIR'" output_dir=OUT autostart=true
+# export a scene for the CPU workflow
+python -m spider.simulators.chord_export --parquet REFERENCE_DIR \
+    --out example_datasets/processed/chord/sharpa/bimanual/TASK/DATA_ID
+```
 
 ### Native Mujoco Wrap Workflow
 

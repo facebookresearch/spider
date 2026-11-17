@@ -594,7 +594,7 @@ def main(config: Config):
 
     _assert_object_actuator_gains_zero(env, config, "end")
 
-    if "viser" in config.viewer and config.wait_on_finish:
+    if config.show_viewer and "viser" in config.viewer and config.wait_on_finish:
         loguru.logger.info(
             "Optimization complete! Keeping Viser server alive. Press Ctrl+C to exit."
         )
